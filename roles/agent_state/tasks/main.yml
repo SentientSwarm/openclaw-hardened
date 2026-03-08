@@ -36,16 +36,15 @@
   no_log: true
 
 - name: Clone agent state repos
-  git:
-    repo: "{{ item }}"
-    dest: "{{ openclaw_data_dir }}/state-repos/{{ item | hash('md5') }}"
-    version: "main"
+  command: >
+    git -c http.proxy=http://{{ pipelock.listen }} clone
+    --branch main --single-branch
+    {{ item }}
+    {{ openclaw_data_dir }}/state-repos/{{ item | hash('md5') }}
+  args:
+    creates: "{{ openclaw_data_dir }}/state-repos/{{ item | hash('md5') }}"
   become_user: openclaw
   environment:
-    http_proxy: "http://{{ pipelock.listen }}"
-    https_proxy: "http://{{ pipelock.listen }}"
-    HTTP_PROXY: "http://{{ pipelock.listen }}"
-    HTTPS_PROXY: "http://{{ pipelock.listen }}"
     GIT_ASKPASS: "{{ openclaw_data_dir }}/state-repos/.git-credential-helper"
   loop: "{{ _agent_repos_https }}"
 
