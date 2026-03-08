@@ -103,6 +103,11 @@
   loop: "{{ openclaw_agents }}"
   when: item.state_repo is defined
 
+- name: Ensure sqlite3 is installed
+  apt:
+    name: sqlite3
+    state: present
+
 - name: Create agent memory directories
   file:
     path: "{{ openclaw_data_dir }}/agents/{{ item.item.id }}/memory"
