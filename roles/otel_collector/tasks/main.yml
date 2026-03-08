@@ -24,26 +24,14 @@
   set_fact:
     otelcol_arch: "{{ 'arm64' if ansible_facts['architecture'] == 'aarch64' else 'amd64' }}"
 
-- name: Allow temporary egress for download
-  command: >
-    nft insert rule inet openclaw output
-    ip daddr != { 10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16, 127.0.0.0/8 }
-    tcp dport { 80, 443 }
-    accept
-    comment "temp-otelcol-download"
-
 - name: Download otelcol-contrib
   get_url:
     url: "https://github.com/open-telemetry/opentelemetry-collector-releases/releases/download/v{{ telemetry.otel_collector.version }}/otelcol-contrib_{{ telemetry.otel_collector.version }}_linux_{{ otelcol_arch }}.tar.gz"
     dest: /tmp/otelcol-contrib.tar.gz
     mode: "0644"
     timeout: 60
-
-- name: Remove temporary egress rule
-  shell: |
-    HANDLE=$(nft -a list chain inet openclaw output | grep 'temp-otelcol-download' | awk '{print $NF}')
-    [ -n "$HANDLE" ] && nft delete rule inet openclaw output handle "$HANDLE"
-  changed_when: true
+  environment:
+    https_proxy: "http://{{ pipelock.listen }}"
 
 - name: Extract otelcol-contrib binary
   unarchive:
