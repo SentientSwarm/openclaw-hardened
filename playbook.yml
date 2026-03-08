@@ -29,6 +29,19 @@
         state: started
       tags: [always]
 
+    # ── Merge role defaults with site config ─────────────────
+    # Ansible does shallow dict override. These set_facts deep-merge
+    # role defaults with site overrides so all roles see complete config.
+    - name: Merge role defaults with site config
+      set_fact:
+        docker: "{{ _docker_defaults | default({}) | combine(docker | default({}), recursive=True) }}"
+        pipelock: "{{ _pipelock_defaults | default({}) | combine(pipelock | default({}), recursive=True) }}"
+        locksmith: "{{ _locksmith_defaults | default({}) | combine(locksmith | default({}), recursive=True) }}"
+        llamafirewall: "{{ _llamafirewall_defaults | default({}) | combine(llamafirewall | default({}), recursive=True) }}"
+        openclaw: "{{ _openclaw_defaults | default({}) | combine(openclaw | default({}), recursive=True) }}"
+        network: "{{ network_defaults | default({}) | combine(network | default({}), recursive=True) }}"
+      tags: [always]
+
   roles:
     # ── Phase 2: Hardening ───────────────────────────────────
     - role: docker_hardening
