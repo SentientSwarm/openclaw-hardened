@@ -12,17 +12,44 @@
     mode: "0750"
   when: _agent_repos | length > 0
 
+# Convert git@github.com:org/repo.git to https://github.com/org/repo.git
+# so traffic routes through Pipelock (SSH egress is blocked by nftables).
+# Authentication uses the GitHub token from vault via git credential helper.
+- name: Convert SSH URLs to HTTPS
+  set_fact:
+    _agent_repos_https: >-
+      {{ _agent_repos | map('regex_replace',
+         '^git@github\.com:(.*)$',
+         'https://github.com/\1') | list }}
+
+- name: Configure git credential helper for clone
+  copy:
+    content: |
+      #!/bin/sh
+      echo "username=x-access-token"
+      echo "password={{ vault_github_token }}"
+    dest: "{{ openclaw_data_dir }}/state-repos/.git-credential-helper"
+    owner: openclaw
+    group: openclaw
+    mode: "0700"
+  when: _agent_repos | length > 0 and vault_github_token | default('') != ''
+  no_log: true
+
 - name: Clone agent state repos
   git:
     repo: "{{ item }}"
     dest: "{{ openclaw_data_dir }}/state-repos/{{ item | hash('md5') }}"
     version: "main"
-    accept_hostkey: true
   become_user: openclaw
   environment:
     https_proxy: "http://{{ pipelock.listen }}"
-    GIT_SSH_COMMAND: "ssh -o StrictHostKeyChecking=accept-new"
-  loop: "{{ _agent_repos }}"
+    GIT_ASKPASS: "{{ openclaw_data_dir }}/state-repos/.git-credential-helper"
+  loop: "{{ _agent_repos_https }}"
+
+- name: Remove credential helper
+  file:
+    path: "{{ openclaw_data_dir }}/state-repos/.git-credential-helper"
+    state: absent
 
 - name: Create per-agent directories
   file:
@@ -34,9 +61,15 @@
   loop: "{{ openclaw_agents }}"
   when: item.state_repo is defined
 
+# Symlinks use the HTTPS URL hash (not SSH) since that's what we cloned with
+- name: Build repo URL map (SSH → HTTPS hash)
+  set_fact:
+    _repo_hash_map: >-
+      {{ dict(_agent_repos | zip(_agent_repos_https | map('hash', 'md5') | list)) }}
+
 - name: Link agent workspaces
   file:
-    src: "{{ openclaw_data_dir }}/state-repos/{{ item.state_repo | hash('md5') }}/{{ item.state_path }}/workspace"
+    src: "{{ openclaw_data_dir }}/state-repos/{{ _repo_hash_map[item.state_repo] }}/{{ item.state_path }}/workspace"
     dest: "{{ openclaw_data_dir }}/agents/{{ item.id }}/workspace"
     state: link
     owner: openclaw
@@ -46,13 +79,13 @@
 
 - name: Check for shared knowledge directory
   stat:
-    path: "{{ openclaw_data_dir }}/state-repos/{{ _agent_repos[0] | hash('md5') }}/shared"
+    path: "{{ openclaw_data_dir }}/state-repos/{{ _agent_repos_https[0] | hash('md5') }}/shared"
   register: _shared_dir
   when: _agent_repos | length > 0
 
 - name: Link shared knowledge
   file:
-    src: "{{ openclaw_data_dir }}/state-repos/{{ _agent_repos[0] | hash('md5') }}/shared"
+    src: "{{ openclaw_data_dir }}/state-repos/{{ _agent_repos_https[0] | hash('md5') }}/shared"
     dest: "{{ openclaw_data_dir }}/shared"
     state: link
     owner: openclaw
@@ -61,7 +94,7 @@
 
 - name: Check for memory dumps
   stat:
-    path: "{{ openclaw_data_dir }}/state-repos/{{ item.state_repo | hash('md5') }}/{{ item.state_path }}/memory/dumps/main.sql"
+    path: "{{ openclaw_data_dir }}/state-repos/{{ _repo_hash_map[item.state_repo] }}/{{ item.state_path }}/memory/dumps/main.sql"
   register: _memory_dumps
   loop: "{{ openclaw_agents }}"
   when: item.state_repo is defined
@@ -79,7 +112,7 @@
 - name: Restore agent memory databases
   shell: |
     sqlite3 {{ openclaw_data_dir }}/agents/{{ item.item.id }}/memory/main.sqlite \
-      < {{ openclaw_data_dir }}/state-repos/{{ item.item.state_repo | hash('md5') }}/{{ item.item.state_path }}/memory/dumps/main.sql
+      < {{ openclaw_data_dir }}/state-repos/{{ _repo_hash_map[item.item.state_repo] }}/{{ item.item.state_path }}/memory/dumps/main.sql
   args:
     creates: "{{ openclaw_data_dir }}/agents/{{ item.item.id }}/memory/main.sqlite"
   become_user: openclaw
