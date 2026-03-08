@@ -42,7 +42,10 @@
     version: "main"
   become_user: openclaw
   environment:
+    http_proxy: "http://{{ pipelock.listen }}"
     https_proxy: "http://{{ pipelock.listen }}"
+    HTTP_PROXY: "http://{{ pipelock.listen }}"
+    HTTPS_PROXY: "http://{{ pipelock.listen }}"
     GIT_ASKPASS: "{{ openclaw_data_dir }}/state-repos/.git-credential-helper"
   loop: "{{ _agent_repos_https }}"
 
