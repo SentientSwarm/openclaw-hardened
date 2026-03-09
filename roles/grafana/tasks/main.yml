@@ -31,7 +31,9 @@
 
 - name: Configure apt proxy for Grafana install
   copy:
-    content: 'Acquire::https::Proxy "http://{{ pipelock.listen }}";'
+    content: |
+      Acquire::http::Proxy "http://{{ pipelock.listen }}";
+      Acquire::https::Proxy "http://{{ pipelock.listen }}";
     dest: /etc/apt/apt.conf.d/90pipelock
     mode: "0644"
 

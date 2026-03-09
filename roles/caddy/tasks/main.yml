@@ -33,19 +33,24 @@
   environment:
     https_proxy: "http://{{ pipelock.listen }}"
 
+- name: Check if Caddy is installed
+  stat:
+    path: /usr/bin/caddy
+  register: _caddy_bin
+
 - name: Create extract directory
   file:
     path: /tmp/caddy-extract
     state: directory
     mode: "0755"
+  when: not _caddy_bin.stat.exists
 
 - name: Extract Caddy binary
   unarchive:
     src: /tmp/caddy.tar.gz
     dest: /tmp/caddy-extract
     remote_src: true
-  args:
-    creates: /usr/bin/caddy
+  when: not _caddy_bin.stat.exists
 
 - name: Install Caddy binary
   copy:
@@ -55,6 +60,7 @@
     owner: root
     group: root
     mode: "0755"
+  when: not _caddy_bin.stat.exists
 
 - name: Write Caddyfile
   template:
