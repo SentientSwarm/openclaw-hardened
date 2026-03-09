@@ -48,7 +48,7 @@ check "UFW disabled"                     "! systemctl is-active ufw"
 check "nftables table inet openclaw"     "nft list tables | grep -q 'inet openclaw'"
 check "nftables skuid egress rule"       "nft list chain inet openclaw output 2>/dev/null | grep -q 'skuid'"
 check "nftables allowed_lan_ips set"     "nft list set inet openclaw allowed_lan_ips 2>/dev/null | grep -q '{{ network.gateway_ip }}'"
-check "nftables output hook loaded"      "nft list chain inet openclaw output 2>/dev/null | grep -q 'hook output'"
+check "nftables output hook loaded"      "nft list chain inet openclaw output 2>/dev/null | grep -q 'priority'"
 check "Docker tables still intact"       "iptables -L DOCKER-USER -n"
 
 check "egress blocked (openclaw user)"   "! sudo -u openclaw curl -sf --max-time 3 https://httpbin.org/ip"

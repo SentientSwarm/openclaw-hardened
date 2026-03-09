@@ -15,7 +15,7 @@
   changed_when: false
 
 - name: Run verification
-  command: /usr/local/bin/verify-posture.sh
+  shell: /usr/local/bin/verify-posture.sh
   register: verify_result
   changed_when: false
   failed_when: false
