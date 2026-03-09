@@ -160,10 +160,20 @@
          | flatten
          | list }}
 
+# Dumps from SQLite 3.44+ may contain unistr() which older versions
+# don't support. Pre-process to expand unistr('\u000a') to literal newlines.
 - name: Restore agent memory databases
   shell: |
-    sqlite3 {{ item.path | regex_replace('/dumps/([^/]+)\.sql$', '/\1.sqlite') }} \
-      < {{ item.path }}
+    python3 -c "
+    import re, sys
+    sql = open(sys.argv[1]).read()
+    def expand(m):
+        inner = m.group(1).replace(chr(92)+'u000a', chr(10))
+        return chr(39) + inner + chr(39)
+    sql = re.sub(r\"unistr\('((?:[^']|'')*?)'\)\", expand, sql)
+    sys.stdout.write(sql)
+    " {{ item.path }} \
+      | sqlite3 {{ item.path | regex_replace('/dumps/([^/]+)\.sql$', '/\1.sqlite') }}
   args:
     creates: "{{ item.path | regex_replace('/dumps/([^/]+)\\.sql$', '/\\1.sqlite') }}"
   become_user: openclaw
