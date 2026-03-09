@@ -85,9 +85,6 @@
 {% if agent.skills is defined %}
         "skills": {{ agent.skills | to_json }},
 {% endif %}
-        "memory": {
-          "path": "{{ openclaw_data_dir | default('/home/openclaw/.openclaw') }}/agents/{{ agent.id }}/memory"
-        },
         "memorySearch": {
           "enabled": {{ agent.memory_search | default(false) | to_json }},
           "sources": ["memory", "sessions"],
