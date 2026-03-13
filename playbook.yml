@@ -4,36 +4,30 @@
 #
 # Usage:
 #   ansible-playbook playbook.yml --ask-become-pass
+#   ansible-playbook playbook.yml --ask-become-pass --tags bootstrap
 #   ansible-playbook playbook.yml --ask-become-pass --tags phase2
 #   ansible-playbook playbook.yml --ask-become-pass --tags verify
 #
+# Prerequisites:
+#   ansible-galaxy collection install -r requirements.yml
+#
 # Phases:
-#   phase1: openclaw-ansible base (run locally on host — see README)
-#   phase2: docker_hardening, pipelock, nftables, llamafirewall
-#   phase3: openclaw_config, openclaw_service
-#   verify: posture verification
+#   bootstrap: system prep — user, Docker, Node.js, OpenClaw binary
+#   phase2:    docker_hardening, pipelock, nftables, llamafirewall
+#   phase3:    openclaw_config, openclaw_service
+#   verify:    posture verification
 # ═════════════════════════════════════════════════════════════
 - name: Secure OpenClaw Deployment
   hosts: agent_hosts
   become: true
 
   pre_tasks:
-    - name: Verify Phase 1 completed (openclaw user exists)
-      command: id openclaw
-      changed_when: false
-      tags: [always]
-
-    - name: Verify Docker is running
-      systemd:
-        name: docker
-        state: started
-      tags: [always]
-
     # ── Merge role defaults with site config ─────────────────
     # Ansible does shallow dict override. These set_facts deep-merge
     # role defaults with site overrides so all roles see complete config.
     - name: Merge role defaults with site config
       set_fact:
+        bootstrap: "{{ _bootstrap_defaults | default({}) | combine(bootstrap | default({}), recursive=True) }}"
         docker: "{{ _docker_defaults | default({}) | combine(docker | default({}), recursive=True) }}"
         pipelock: "{{ _pipelock_defaults | default({}) | combine(pipelock | default({}), recursive=True) }}"
         locksmith: "{{ _locksmith_defaults | default({}) | combine(locksmith | default({}), recursive=True) }}"
@@ -42,7 +36,26 @@
         network: "{{ network_defaults | default({}) | combine(network | default({}), recursive=True) }}"
       tags: [always]
 
+    # ── Phase 1 prerequisite checks (skip when bootstrap runs) ──
+    - name: Verify openclaw user exists (Phase 1 prerequisite)
+      command: id openclaw
+      changed_when: false
+      when: not (bootstrap.enabled | default(true))
+      tags: [always]
+
+    - name: Verify Docker is running (Phase 1 prerequisite)
+      systemd:
+        name: docker
+        state: started
+      when: not (bootstrap.enabled | default(true))
+      tags: [always]
+
   roles:
+    # ── Phase 1: Bootstrap (replaces openclaw-ansible) ─────
+    - role: bootstrap
+      tags: [bootstrap, phase1]
+      when: bootstrap.enabled | default(true)
+
     # ── Phase 2: Hardening ───────────────────────────────────
     - role: docker_hardening
       tags: [phase2, docker]
@@ -68,6 +81,10 @@
 
     - role: phoenix
       tags: [phase2, telemetry, phoenix]
+      when: telemetry.enabled | default(false)
+
+    - role: loki
+      tags: [phase2, telemetry, loki]
       when: telemetry.enabled | default(false)
 
     - role: prometheus
