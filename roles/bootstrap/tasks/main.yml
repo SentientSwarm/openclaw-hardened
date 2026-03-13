@@ -1,0 +1,52 @@
+---
+# Bootstrap role — Phase 1 system preparation
+# Replaces the standalone openclaw-ansible playbook.
+# Debian/Ubuntu only.
+
+# Guard: apply defaults if playbook pre_tasks haven't merged yet.
+# This allows the role to be tested standalone without the playbook.
+- name: Apply bootstrap defaults if not already merged
+  set_fact:
+    bootstrap: "{{ _bootstrap_defaults | combine(bootstrap | default({}), recursive=True) }}"
+  when: bootstrap is not defined or bootstrap.enabled is not defined
+
+- name: Verify supported platform
+  assert:
+    that:
+      - ansible_os_family == 'Debian'
+    fail_msg: >
+      Unsupported OS family: {{ ansible_os_family }}.
+      Bootstrap requires Debian or Ubuntu.
+
+- name: Display bootstrap target
+  debug:
+    msg: "Bootstrapping {{ ansible_distribution }} {{ ansible_distribution_version }} on {{ inventory_hostname }}"
+
+- name: Update apt cache and upgrade packages
+  apt:
+    update_cache: true
+    upgrade: dist
+    cache_valid_time: 3600
+
+- name: Install system tools
+  include_tasks: system-tools.yml
+  when: bootstrap.system_tools | default(true)
+
+- name: Create and configure openclaw user
+  include_tasks: user.yml
+
+- name: Install Docker CE
+  include_tasks: docker.yml
+
+- name: Install Node.js and pnpm
+  include_tasks: nodejs.yml
+
+- name: Install Tailscale
+  include_tasks: tailscale.yml
+  when: bootstrap.tailscale_enabled | default(false)
+
+- name: Configure security hardening
+  include_tasks: security.yml
+
+- name: Install OpenClaw binary
+  include_tasks: openclaw.yml
