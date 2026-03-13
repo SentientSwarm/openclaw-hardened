@@ -22,7 +22,7 @@
 {% endfor %}
 {# ── Legacy channels (non-agent-scoped, or fallback when no agent defines it) #}
 {% set _chans = {} %}
-{% for name, cfg in openclaw_channels.items() %}
+{% for name, cfg in (openclaw_channels | default({})).items() %}
 {%   if name == 'slack' and _agent_slack | length > 0 %}
 {#     Skip legacy slack — agents own it now #}
 {%   elif name == 'telegram' and _agent_telegram | length > 0 %}

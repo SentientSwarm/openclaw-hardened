@@ -33,7 +33,9 @@ openclaw_binary: "/home/openclaw/.local/bin/openclaw"
 # Agent definitions — empty by default, defined in site config
 openclaw_agents: []
 
-# Safety default — prevents template failure when host_vars omits openclaw_channels
+# Safety default — prevents template failure when host_vars omits openclaw_channels.
+# Legacy channel entries use camelCase keys (botToken, appToken, groupPolicy, etc.)
+# matching the OpenClaw JSON schema. Agent-scoped channels use snake_case (bot_token).
 openclaw_channels: {}
 
 # Per-agent channel account defaults (used when agent defines slack/telegram block)
