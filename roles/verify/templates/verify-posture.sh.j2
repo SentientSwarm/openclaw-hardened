@@ -23,7 +23,7 @@ echo "  Security Posture — {{ inventory_hostname }} ({{ host_ip }})"
 echo "═══════════════════════════════════════════════════════"
 
 echo ""
-echo -e "${CYAN}Phase 1: openclaw-ansible${NC}"
+echo -e "${CYAN}Phase 1: Bootstrap${NC}"
 check "openclaw user exists"              "id openclaw"
 check "openclaw home dir"                 "test -d /home/openclaw/.openclaw"
 check "Docker installed"                  "command -v docker"
@@ -125,6 +125,22 @@ if [[ -n "$_sandbox_cid" ]]; then
 else
     echo -e "  ${YELLOW}SKIP${NC}  No sandbox container running (agent may be idle)"
 fi
+{% endif %}
+
+{% if telemetry.enabled | default(false) %}
+echo ""
+echo -e "${CYAN}Telemetry Stack${NC}"
+check "otel-collector service running"     "systemctl is-active otel-collector"
+check "prometheus service running"         "systemctl is-active prometheus"
+check "phoenix service running"            "systemctl is-active phoenix"
+check "grafana service running"            "systemctl is-active grafana-server"
+check "caddy service running"              "systemctl is-active caddy"
+{% if telemetry.loki is defined %}
+check "loki service running"               "systemctl is-active loki"
+check "loki listening on :{{ telemetry.loki.port }}"  "ss -tlnp | grep -q ':{{ telemetry.loki.port }}'"
+check "loki ready"                         "curl -sf --max-time 3 http://{{ telemetry.host }}:{{ telemetry.loki.port }}/ready"
+check "promtail service running"           "systemctl is-active promtail"
+{% endif %}
 {% endif %}
 
 echo ""

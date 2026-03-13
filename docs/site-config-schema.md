@@ -153,8 +153,7 @@ Core OpenClaw gateway and agent runtime settings.
 
 | Variable | Type | Default | Description |
 |----------|------|---------|-------------|
-| `openclaw.ansible_repo` | string | *(none)* | URL of openclaw-ansible repo (Phase 1 installer) |
-| `openclaw.ansible_branch` | string | `main` | Branch to checkout |
+| `openclaw.install_mode` | string | `release` | Install mode: `release` (pnpm) or `development` (git clone + build) |
 | `openclaw.gateway_bind` | string | `lan` | Gateway bind mode (`lan` or `0.0.0.0`) |
 | `openclaw.gateway_port` | int | `18789` | Gateway listen port |
 | `openclaw.gateway_auth_mode` | string | `password` | Auth mode: `password` or `token` |
