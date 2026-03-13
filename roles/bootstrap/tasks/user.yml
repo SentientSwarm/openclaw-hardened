@@ -1,0 +1,116 @@
+---
+# Create and configure the openclaw system user
+
+- name: Create openclaw system user
+  user:
+    name: "{{ openclaw_user }}"
+    comment: "OpenClaw Service User"
+    system: true
+    shell: /bin/bash
+    create_home: true
+    home: "{{ openclaw_home }}"
+    state: present
+
+- name: Ensure openclaw home directory has correct ownership
+  file:
+    path: "{{ openclaw_home }}"
+    owner: "{{ openclaw_user }}"
+    group: "{{ openclaw_user }}"
+    state: directory
+    mode: "0755"
+
+- name: Configure .bashrc for openclaw user
+  blockinfile:
+    path: "{{ openclaw_home }}/.bashrc"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - OpenClaw config"
+    block: |
+      # Enable 256 colors
+      export TERM=xterm-256color
+      export COLORTERM=truecolor
+
+      # pnpm configuration
+      export PNPM_HOME="{{ openclaw_home }}/.local/share/pnpm"
+      export PATH="{{ openclaw_home }}/.local/bin:$PNPM_HOME:$PATH"
+
+      # Color support for common tools
+      export CLICOLOR=1
+      export LS_COLORS='di=34:ln=35:so=32:pi=33:ex=31:bd=34;46:cd=34;43:su=30;41:sg=30;46:tw=30;42:ow=30;43'
+
+      # Aliases
+      alias ls='ls --color=auto'
+      alias grep='grep --color=auto'
+      alias ll='ls -lah'
+    create: true
+    owner: "{{ openclaw_user }}"
+    group: "{{ openclaw_user }}"
+    mode: "0644"
+
+- name: Create .bash_profile to source .bashrc for login shells
+  copy:
+    dest: "{{ openclaw_home }}/.bash_profile"
+    owner: "{{ openclaw_user }}"
+    group: "{{ openclaw_user }}"
+    mode: "0644"
+    content: |
+      # Source .bashrc for login shells
+      if [ -f ~/.bashrc ]; then
+          . ~/.bashrc
+      fi
+
+- name: Deploy scoped sudoers for openclaw user
+  template:
+    src: sudoers.j2
+    dest: "/etc/sudoers.d/{{ openclaw_user }}"
+    owner: root
+    group: root
+    mode: "0440"
+    validate: /usr/sbin/visudo -cf %s
+
+- name: Get openclaw user ID
+  command: "id -u {{ openclaw_user }}"
+  register: openclaw_uid
+  changed_when: false
+
+- name: Enable lingering for openclaw user
+  command: "loginctl enable-linger {{ openclaw_user }}"
+  changed_when: false
+
+- name: Create runtime directory for openclaw user
+  file:
+    path: "/run/user/{{ openclaw_uid.stdout }}"
+    state: directory
+    owner: "{{ openclaw_user }}"
+    group: "{{ openclaw_user }}"
+    mode: "0700"
+
+- name: Set XDG_RUNTIME_DIR in .bashrc
+  lineinfile:
+    path: "{{ openclaw_home }}/.bashrc"
+    line: "export XDG_RUNTIME_DIR=/run/user/$(id -u)"
+    state: present
+
+- name: Configure DBUS session bus in .bashrc
+  blockinfile:
+    path: "{{ openclaw_home }}/.bashrc"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - DBus config"
+    block: |
+      if [ -z "$DBUS_SESSION_BUS_ADDRESS" ]; then
+        export DBUS_SESSION_BUS_ADDRESS="unix:path=${XDG_RUNTIME_DIR}/bus"
+      fi
+
+# SSH key configuration
+- name: Create .ssh directory for openclaw user
+  file:
+    path: "{{ openclaw_home }}/.ssh"
+    state: directory
+    owner: "{{ openclaw_user }}"
+    group: "{{ openclaw_user }}"
+    mode: "0700"
+
+- name: Add SSH authorized keys for openclaw user
+  ansible.posix.authorized_key:
+    user: "{{ openclaw_user }}"
+    state: present
+    key: "{{ item }}"
+  loop: "{{ bootstrap.ssh_keys }}"
+  when: bootstrap.ssh_keys | length > 0
