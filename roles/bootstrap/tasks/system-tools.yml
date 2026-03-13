@@ -1,0 +1,65 @@
+---
+# System packages and tool configuration (Debian/Ubuntu)
+
+- name: Install essential system tools
+  apt:
+    name:
+      # Editors
+      - vim
+      - nano
+      # Version control
+      - git
+      - git-lfs
+      # Network tools
+      - curl
+      - wget
+      - netcat-openbsd
+      - net-tools
+      - dnsutils
+      - iputils-ping
+      - traceroute
+      - tcpdump
+      - nmap
+      - socat
+      - telnet
+      # Debugging tools
+      - strace
+      - lsof
+      - gdb
+      - htop
+      - iotop
+      - iftop
+      - sysstat
+      - procps
+      # System utilities
+      - tmux
+      - tree
+      - jq
+      - unzip
+      - rsync
+      - less
+      - acl
+      # Build essentials
+      - build-essential
+      - file
+    state: present
+    update_cache: true
+
+- name: Deploy global vim configuration
+  template:
+    src: vimrc.j2
+    dest: /etc/vim/vimrc.local
+    owner: root
+    group: root
+    mode: "0644"
+
+- name: Configure git globally
+  community.general.git_config:
+    name: "{{ item.name }}"
+    scope: global
+    value: "{{ item.value }}"
+  loop:
+    - { name: "init.defaultBranch", value: "main" }
+    - { name: "pull.rebase", value: "false" }
+    - { name: "core.editor", value: "vim" }
+    - { name: "color.ui", value: "auto" }
