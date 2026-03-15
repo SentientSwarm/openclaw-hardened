@@ -17,7 +17,7 @@ forward_proxy:
   enabled: true
   max_tunnel_seconds: 300
   idle_timeout_seconds: 120
-  sni_verification: true
+  sni_verification: {{ pipelock.forward_proxy.sni_verification | default(true) | to_json }}
 
 monitoring:
   entropy_threshold: {{ pipelock.monitoring.entropy_threshold }}

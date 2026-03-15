@@ -27,6 +27,9 @@ _pipelock_defaults:
   # Site config can add entries via pipelock.api_allowlist_extra
   api_allowlist_extra: []
 
+  forward_proxy:
+    sni_verification: true
+
   blocklist:
     - "*.pastebin.com"
     - "*.transfer.sh"
