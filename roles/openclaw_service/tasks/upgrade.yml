@@ -1,0 +1,124 @@
+---
+# Upgrade OpenClaw to the version specified by openclaw_version.
+# Skipped when the installed version matches the pinned version.
+#
+# pnpm is incompatible with Pipelock's CONNECT tunnel handling, so
+# upgrades temporarily open direct egress via nftables, bypassing
+# the proxy entirely.
+#
+# Sequence: stop openclaw → stop pipelock → open nftables →
+#           pnpm add -g → close nftables → start pipelock → start openclaw
+
+- name: Get installed OpenClaw version
+  shell:
+    cmd: openclaw --version 2>/dev/null || echo "not-installed"
+    executable: /bin/bash
+  become: true
+  become_user: "{{ openclaw_user }}"
+  environment:
+    PNPM_HOME: "{{ openclaw_home }}/.local/share/pnpm"
+    PATH: "{{ openclaw_home }}/.local/bin:{{ openclaw_home }}/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin"
+    HOME: "{{ openclaw_home }}"
+  register: _installed_version
+  changed_when: false
+
+- name: Display current version
+  debug:
+    msg: "OpenClaw installed: {{ _installed_version.stdout | trim }}"
+
+- name: Determine version match
+  set_fact:
+    _version_match: "{{ _installed_version.stdout | trim == openclaw_version }}"
+
+- name: Upgrade OpenClaw
+  when: not _version_match
+  block:
+    - name: Stop OpenClaw
+      systemd:
+        name: openclaw
+        state: stopped
+
+    - name: Stop Pipelock
+      systemd:
+        name: pipelock
+        state: stopped
+
+    - name: Add temporary direct egress rule for openclaw user
+      shell:
+        cmd: |
+          OC_UID=$(id -u {{ openclaw_user }})
+          # Insert before the egress-block drop rule
+          BLOCK_HANDLE=$(nft -a list chain inet openclaw output \
+            | grep 'egress-block' | grep -oP 'handle \K[0-9]+')
+          if [ -n "$BLOCK_HANDLE" ]; then
+            nft insert rule inet openclaw output position "$BLOCK_HANDLE" \
+              meta skuid "$OC_UID" tcp dport \{ 80, 443 \} \
+              ip daddr != \{ 10.0.0.0/8, 127.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 \} \
+              counter accept comment "temp-upgrade-egress"
+          else
+            nft add rule inet openclaw output \
+              meta skuid "$OC_UID" tcp dport \{ 80, 443 \} \
+              ip daddr != \{ 10.0.0.0/8, 127.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16 \} \
+              counter accept comment "temp-upgrade-egress"
+          fi
+        executable: /bin/bash
+
+    - name: Install openclaw@{{ openclaw_version }}
+      shell:
+        cmd: "pnpm add -g openclaw@{{ openclaw_version }}"
+        executable: /bin/bash
+      become: true
+      become_user: "{{ openclaw_user }}"
+      environment:
+        PNPM_HOME: "{{ openclaw_home }}/.local/share/pnpm"
+        PATH: "{{ openclaw_home }}/.local/bin:{{ openclaw_home }}/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin"
+        HOME: "{{ openclaw_home }}"
+      register: _upgrade_result
+      timeout: 300
+
+  always:
+    - name: Remove temporary egress rule
+      shell:
+        cmd: >
+          HANDLE=$(nft -a list chain inet openclaw output
+          | grep 'temp-upgrade-egress'
+          | grep -oP 'handle \K[0-9]+');
+          [ -n "$HANDLE" ] && nft delete rule inet openclaw output handle $HANDLE
+          || true
+        executable: /bin/bash
+      changed_when: false
+
+    - name: Start Pipelock
+      systemd:
+        name: pipelock
+        state: started
+
+    - name: Verify Pipelock is running
+      command: systemctl is-active pipelock
+      register: _pipelock_status
+      changed_when: false
+      failed_when: _pipelock_status.stdout != 'active'
+
+    - name: Start OpenClaw
+      systemd:
+        name: openclaw
+        state: started
+
+- name: Verify new version
+  shell:
+    cmd: openclaw --version
+    executable: /bin/bash
+  become: true
+  become_user: "{{ openclaw_user }}"
+  environment:
+    PNPM_HOME: "{{ openclaw_home }}/.local/share/pnpm"
+    PATH: "{{ openclaw_home }}/.local/bin:{{ openclaw_home }}/.local/share/pnpm:/usr/local/bin:/usr/bin:/bin"
+    HOME: "{{ openclaw_home }}"
+  register: _new_version
+  changed_when: false
+  when: not _version_match
+
+- name: Display upgraded version
+  debug:
+    msg: "OpenClaw upgraded: {{ _installed_version.stdout | trim }} → {{ _new_version.stdout | trim }}"
+  when: not _version_match and _new_version is defined

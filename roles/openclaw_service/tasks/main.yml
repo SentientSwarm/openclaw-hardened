@@ -1,7 +1,9 @@
 ---
-# Creates a system-level systemd service for OpenClaw.
-# This replaces the user-level service that openclaw onboard
-# tries (and fails) to create when systemctl --user isn't available.
+# Upgrades OpenClaw (if version changed) and manages the systemd service.
+
+- name: Check for version upgrade
+  include_tasks: upgrade.yml
+  when: openclaw_version != "latest"
 
 - name: Detect openclaw binary path
   shell: |
