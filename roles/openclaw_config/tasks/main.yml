@@ -58,7 +58,7 @@
   template:
     src: openclaw.json.j2
     dest: /home/openclaw/.openclaw/openclaw.json
-    owner: openclaw
+    owner: root
     group: openclaw
-    mode: "0600"
+    mode: "0640"
   notify: restart openclaw

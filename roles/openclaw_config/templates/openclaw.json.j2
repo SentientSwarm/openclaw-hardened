@@ -117,7 +117,11 @@
           "sources": ["memory", "sessions"],
           "extraPaths": [
             "{{ openclaw_data_dir | default('/home/openclaw/.openclaw') }}/shared"
-          ]
+          ]{% if ollama.enabled | default(false) and agent.memory_search | default(false) %},
+          "provider": "ollama",
+          "remote": {
+            "baseUrl": "http://{{ ollama.host | default('127.0.0.1') }}:{{ ollama.port | default(11434) }}"
+          }{% endif %}
         }
       }{{ "," if not loop.last }}
 {% endfor %}
@@ -153,14 +157,18 @@
 {%   set _slack_default = _agent_slack | selectattr('agent.default', 'defined') | selectattr('agent.default', 'equalto', true) | first | default(_agent_slack[0]) %}
 {%   set _slack_accounts = {} %}
 {%   for entry in _agent_slack %}
-{%     set _ = _slack_accounts.update({entry.agent.id: {
+{%     set _slack_acct = {
          'name': entry.agent.name | default(entry.agent.id),
          'mode': entry.slack.mode | default('socket'),
          'botToken': entry.slack.bot_token,
          'appToken': entry.slack.app_token | default(''),
          'groupPolicy': entry.slack.group_policy | default('allowlist'),
          'streaming': entry.slack.streaming | default('partial')
-       }}) %}
+       } %}
+{%     if entry.slack.group_allow_from is defined %}
+{%       set _ = _slack_acct.update({'groupAllowFrom': entry.slack.group_allow_from}) %}
+{%     endif %}
+{%     set _ = _slack_accounts.update({entry.agent.id: _slack_acct}) %}
 {%   endfor %}
 {%   set _ = _channels_out.update({'slack': {'defaultAccount': _slack_default.agent.id, 'accounts': _slack_accounts}}) %}
 {% endif %}
@@ -168,13 +176,17 @@
 {%   set _tg_default = _agent_telegram | selectattr('agent.default', 'defined') | selectattr('agent.default', 'equalto', true) | first | default(_agent_telegram[0]) %}
 {%   set _tg_accounts = {} %}
 {%   for entry in _agent_telegram %}
-{%     set _ = _tg_accounts.update({entry.agent.id: {
+{%     set _tg_acct = {
          'name': entry.agent.name | default(entry.agent.id),
          'botToken': entry.telegram.bot_token,
          'dmPolicy': entry.telegram.dm_policy | default('pairing'),
          'groupPolicy': entry.telegram.group_policy | default('allowlist'),
          'streaming': entry.telegram.streaming | default('partial')
-       }}) %}
+       } %}
+{%     if entry.telegram.group_allow_from is defined %}
+{%       set _ = _tg_acct.update({'groupAllowFrom': entry.telegram.group_allow_from}) %}
+{%     endif %}
+{%     set _ = _tg_accounts.update({entry.agent.id: _tg_acct}) %}
 {%   endfor %}
 {%   set _ = _channels_out.update({'telegram': {'defaultAccount': _tg_default.agent.id, 'accounts': _tg_accounts}}) %}
 {% endif %}
