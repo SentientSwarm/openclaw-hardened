@@ -75,7 +75,7 @@ UPSTREAMS = {
         "base_url": "{{ ep.base_url }}",
         "verify_tls": {% if ep.tls_skip_verify %}False{% else %}True{% endif %},
         "cloud": {{ (ep.location | default('lan') == 'cloud') | to_json | capitalize }},
-        "api_key": {{ ('"%s"' % ep.api_key) if ep.api_key is defined else 'None' }},
+        "api_key": {{ ('"%s"' % ep.api_key) if (ep.api_key is defined and ep.api_key not in ['not-required', '']) else 'None' }},
         "api_key_header": {{ ('"%s"' % ep.api_key_header) if ep.api_key_header is defined else 'None' }},
         "api_key_prefix": {{ ('"%s"' % ep.api_key_prefix) if ep.api_key_prefix is defined else 'None' }},
         "api_type": "{{ ep.api_type }}",
@@ -303,7 +303,7 @@ async def lifespan(app: FastAPI):
         if upstream["api_key"]:
             prefix = f'{upstream["api_key_prefix"]} ' if upstream["api_key_prefix"] else ""
             client_headers[upstream["api_key_header"]] = f"{prefix}{upstream['api_key']}"
-        if upstream["api_type"] == "anthropic":
+        if upstream["api_type"].startswith("anthropic"):
             client_headers["anthropic-version"] = "2023-06-01"
 
         clients[name] = httpx.AsyncClient(
