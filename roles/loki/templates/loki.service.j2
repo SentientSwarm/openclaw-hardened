@@ -1,0 +1,21 @@
+[Unit]
+Description=Loki Log Aggregation
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/loki/loki -config.file=/etc/loki/config.yaml
+Restart=always
+RestartSec=5
+
+User=loki
+Group=loki
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{ telemetry.loki.data_dir }}
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

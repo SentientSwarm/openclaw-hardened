@@ -16,3 +16,18 @@ datasources:
     access: proxy
     url: http://{{ telemetry.host }}:{{ telemetry.phoenix.prometheus_port }}
     editable: true
+
+{% if telemetry.loki is defined %}
+  - name: Loki
+    uid: loki
+    type: loki
+    access: proxy
+    url: http://{{ telemetry.host }}:{{ telemetry.loki.port }}
+    editable: true
+    jsonData:
+      derivedFields:
+        - datasourceUid: prometheus
+          matcherRegex: "provider=(\\w+)"
+          name: Provider
+          url: ""
+{% endif %}

@@ -1,0 +1,9 @@
+---
+telemetry_loki_defaults:
+  version: "3.4.2"
+  port: 3100
+  retention: "30d"
+  data_dir: "/var/lib/loki"
+
+telemetry_promtail_defaults:
+  version: "3.4.2"

@@ -1,0 +1,161 @@
+---
+# Loki + Promtail — log aggregation for the openclaw stack
+
+# ── Loki ──────────────────────────────────────────────────────
+
+- name: Create loki user
+  user:
+    name: loki
+    system: true
+    create_home: false
+    shell: /usr/sbin/nologin
+
+- name: Create loki directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: loki
+    group: loki
+    mode: "0755"
+  loop:
+    - /opt/loki
+    - /etc/loki
+    - "{{ telemetry.loki.data_dir }}"
+    - "{{ telemetry.loki.data_dir }}/chunks"
+    - "{{ telemetry.loki.data_dir }}/tsdb-index"
+    - "{{ telemetry.loki.data_dir }}/tsdb-cache"
+    - "{{ telemetry.loki.data_dir }}/compactor"
+
+- name: Detect architecture
+  set_fact:
+    _loki_arch: "{{ 'arm64' if ansible_facts['architecture'] == 'aarch64' else 'amd64' }}"
+
+- name: Check if Loki binary exists
+  stat:
+    path: /opt/loki/loki
+  register: _loki_bin
+
+- name: Download Loki
+  get_url:
+    url: "https://github.com/grafana/loki/releases/download/v{{ telemetry.loki.version }}/loki-linux-{{ _loki_arch }}.zip"
+    dest: /tmp/loki.zip
+    mode: "0644"
+    timeout: 60
+  environment:
+    https_proxy: "http://{{ pipelock.listen }}"
+  when: not _loki_bin.stat.exists
+
+- name: Install unzip
+  apt:
+    name: unzip
+    state: present
+
+- name: Extract Loki binary
+  unarchive:
+    src: /tmp/loki.zip
+    dest: /opt/loki
+    remote_src: true
+  when: not _loki_bin.stat.exists
+
+- name: Link Loki binary
+  file:
+    src: /opt/loki/loki-linux-{{ _loki_arch }}
+    dest: /opt/loki/loki
+    state: link
+
+- name: Write Loki config
+  template:
+    src: loki-config.yaml.j2
+    dest: /etc/loki/config.yaml
+    owner: loki
+    group: loki
+    mode: "0644"
+  notify: restart loki
+
+- name: Write Loki systemd service
+  template:
+    src: loki.service.j2
+    dest: /etc/systemd/system/loki.service
+    mode: "0644"
+  notify: restart loki
+
+- name: Enable and start Loki
+  systemd:
+    name: loki
+    enabled: true
+    state: started
+    daemon_reload: true
+
+# ── Promtail ──────────────────────────────────────────────────
+
+- name: Create promtail user
+  user:
+    name: promtail
+    system: true
+    create_home: false
+    shell: /usr/sbin/nologin
+    groups: systemd-journal,adm
+    append: true
+
+- name: Create promtail directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: promtail
+    group: promtail
+    mode: "0755"
+  loop:
+    - /opt/promtail
+    - /etc/promtail
+    - /var/lib/promtail
+
+- name: Check if Promtail binary exists
+  stat:
+    path: /opt/promtail/promtail
+  register: _promtail_bin
+
+- name: Download Promtail
+  get_url:
+    url: "https://github.com/grafana/loki/releases/download/v{{ telemetry.promtail.version }}/promtail-linux-{{ _loki_arch }}.zip"
+    dest: /tmp/promtail.zip
+    mode: "0644"
+    timeout: 60
+  environment:
+    https_proxy: "http://{{ pipelock.listen }}"
+  when: not _promtail_bin.stat.exists
+
+- name: Extract Promtail binary
+  unarchive:
+    src: /tmp/promtail.zip
+    dest: /opt/promtail
+    remote_src: true
+  when: not _promtail_bin.stat.exists
+
+- name: Link Promtail binary
+  file:
+    src: /opt/promtail/promtail-linux-{{ _loki_arch }}
+    dest: /opt/promtail/promtail
+    state: link
+
+- name: Write Promtail config
+  template:
+    src: promtail-config.yaml.j2
+    dest: /etc/promtail/config.yaml
+    owner: promtail
+    group: promtail
+    mode: "0644"
+  notify: restart promtail
+
+- name: Write Promtail systemd service
+  template:
+    src: promtail.service.j2
+    dest: /etc/systemd/system/promtail.service
+    mode: "0644"
+  notify: restart promtail
+
+- name: Enable and start Promtail
+  systemd:
+    name: promtail
+    enabled: true
+    state: started
+    daemon_reload: true

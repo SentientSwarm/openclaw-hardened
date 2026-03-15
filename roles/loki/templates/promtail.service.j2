@@ -1,0 +1,24 @@
+[Unit]
+Description=Promtail Log Collector
+After=network-online.target loki.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/opt/promtail/promtail -config.file=/etc/promtail/config.yaml
+Restart=always
+RestartSec=5
+
+User=promtail
+Group=promtail
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/promtail
+PrivateTmp=true
+
+# Promtail needs access to the journal
+SupplementaryGroups=systemd-journal adm
+
+[Install]
+WantedBy=multi-user.target
