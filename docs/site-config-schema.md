@@ -353,8 +353,7 @@ presence and are only reachable via the gateway UI.
 | `slack.bot_token` | string | *(required)* | Slack bot token (xoxb-...) |
 | `slack.app_token` | string | `""` | Slack app-level token for Socket Mode (xapp-...) |
 | `slack.mode` | string | `socket` | Connection mode: `socket` or `http` |
-| `slack.group_policy` | string | `allowlist` | Channel access policy |
-| `slack.group_allow_from` | list of string | *(none)* | Slack user IDs allowed in group channels (when `group_policy: allowlist`) |
+| `slack.group_policy` | string | `allowlist` | Channel access policy (`allowlist` or `open`) |
 | `slack.streaming` | string | `partial` | Stream preview mode |
 
 ### Agent Telegram identity (`openclaw_agents[].telegram`)

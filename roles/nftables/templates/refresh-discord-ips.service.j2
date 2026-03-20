@@ -1,0 +1,7 @@
+[Unit]
+Description=Refresh Discord IPs in nftables
+After=network-online.target
+
+[Service]
+Type=oneshot
+ExecStart=/usr/local/bin/refresh-discord-ips.sh
