@@ -1,0 +1,12 @@
+[Unit]
+Description=Incus agents network guard
+After=network-online.target incus.service docker.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/agents-network-guard
+
+[Install]
+WantedBy=multi-user.target

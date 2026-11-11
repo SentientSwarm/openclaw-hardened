@@ -62,6 +62,11 @@ table inet openclaw {
     chain input {
         type filter hook input priority 10; policy drop;
 
+        # Incus agentbr0 service/DNS exceptions; owned by agents-network-guard.
+        iifname "agentbr0" tcp dport {{ pipelock.listen.split(':')[1] }} accept comment "agents-guard-pipelock"
+        iifname "agentbr0" udp dport { 53, 67 } accept comment "agents-guard-dns-dhcp"
+        iifname "agentbr0" tcp dport 53 accept comment "agents-guard-dns-tcp"
+
         ct state established,related accept
         iif lo accept
         ip saddr @docker_nets accept
@@ -96,6 +101,10 @@ table inet openclaw {
     # ── OUTPUT ───────────────────────────────────────────────
     chain output {
         type filter hook output priority 10; policy drop;
+
+        # Incus agentbr0 DNS/DHCP responses; owned by agents-network-guard.
+        oifname "agentbr0" udp sport { 53, 67 } accept comment "agents-guard-dns-dhcp"
+        oifname "agentbr0" tcp sport 53 accept comment "agents-guard-dns-tcp"
 
         ct state established,related accept
         oif lo accept
