@@ -26,6 +26,31 @@
     name: nftables
     enabled: true
 
+- name: Install Incus agents nftables guard rules
+  template:
+    src: agents-guard.nft.j2
+    dest: /etc/agents-guard.nft
+    mode: "0644"
+
+- name: Install Incus agents network guard script
+  template:
+    src: agents-network-guard.sh.j2
+    dest: /usr/local/sbin/agents-network-guard
+    mode: "0755"
+
+- name: Install Incus agents network guard unit
+  template:
+    src: agents-network-guard.service.j2
+    dest: /etc/systemd/system/agents-network-guard.service
+    mode: "0644"
+
+- name: Enable Incus agents network guard
+  systemd:
+    name: agents-network-guard.service
+    enabled: true
+    state: started
+    daemon_reload: true
+
 - name: Load nftables ruleset
   command: nft -f /etc/nftables.conf
   changed_when: true

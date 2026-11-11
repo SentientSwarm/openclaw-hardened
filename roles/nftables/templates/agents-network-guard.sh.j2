@@ -1,0 +1,11 @@
+#!/bin/sh
+set -eu
+if ! /usr/sbin/nft list table inet agents_guard >/dev/null 2>&1; then
+  /usr/sbin/nft -f /etc/agents-guard.nft
+fi
+if ! /usr/sbin/iptables-nft -C FORWARD -i agentbr0 -o eno1 -d 192.168.50.13 -p tcp --dport 9200 -m comment --comment agents-locksmith-egress -j ACCEPT 2>/dev/null; then
+  /usr/sbin/iptables-nft -I FORWARD 1 -i agentbr0 -o eno1 -d 192.168.50.13 -p tcp --dport 9200 -m comment --comment agents-locksmith-egress -j ACCEPT
+fi
+if ! /usr/sbin/iptables-nft -C FORWARD -i eno1 -o agentbr0 -s 192.168.50.13 -p tcp --sport 9200 -m conntrack --ctstate ESTABLISHED,RELATED -m comment --comment agents-locksmith-return -j ACCEPT 2>/dev/null; then
+  /usr/sbin/iptables-nft -I FORWARD 1 -i eno1 -o agentbr0 -s 192.168.50.13 -p tcp --sport 9200 -m conntrack --ctstate ESTABLISHED,RELATED -m comment --comment agents-locksmith-return -j ACCEPT
+fi

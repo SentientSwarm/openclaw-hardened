@@ -1,0 +1,28 @@
+#!/usr/sbin/nft -f
+# Narrow host guard for Incus project agents/agentbr0.
+# Loaded by agents-network-guard.service; rollback: delete table inet agents_guard.
+table inet agents_guard {
+    chain input {
+        type filter hook input priority -20; policy accept;
+        iifname "agentbr0" tcp dport {{ pipelock.listen.split(':')[1] }} accept comment "agents-pipelock-host"
+        ct state established,related accept
+        iifname "agentbr0" udp dport { 53, 67 } accept comment "agents-dns-dhcp"
+        iifname "agentbr0" tcp dport 53 accept comment "agents-dns-tcp"
+        iifname "agentbr0" drop comment "agents-no-ingress"
+    }
+    chain forward {
+        type filter hook forward priority -20; policy accept;
+        ct state established,related accept
+        iifname "agentbr0" oifname != "agentbr0" ip daddr {{ network.allowed_lan_ips | selectattr('ip', 'equalto', '192.168.50.13') | map(attribute='ip') | first }} tcp dport 9200 counter accept comment "agents-locksmith-egress"
+        iifname "agentbr0" oifname != "agentbr0" ip daddr {{ network.allowed_lan_ips | selectattr('ip', 'equalto', '192.168.50.20') | map(attribute='ip') | first }} tcp dport {{ pipelock.listen.split(':')[1] }} counter accept comment "agents-pipelock-egress"
+        iifname "agentbr0" oifname != "agentbr0" drop comment "agents-no-egress"
+        oifname "agentbr0" iifname != "agentbr0" drop comment "agents-no-ingress"
+    }
+    chain output {
+        type filter hook output priority -20; policy accept;
+        ct state established,related accept
+        oifname "agentbr0" udp sport { 53, 67 } accept comment "agents-dns-dhcp-return"
+        oifname "agentbr0" tcp sport 53 accept comment "agents-dns-return"
+        oifname "agentbr0" drop comment "agents-no-host-output"
+    }
+}
