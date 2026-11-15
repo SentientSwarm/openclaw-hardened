@@ -31,6 +31,22 @@
       - agents_guard.pipelock_address is match('^[0-9]{1,3}(\\.[0-9]{1,3}){3}$')
     fail_msg: "agents_guard.enabled needs the full agents_guard dict in site config (docs/site-config-schema.md#agents_guard)"
 
+- name: Validate optional agents SSH jump targets
+  when: agents_guard.enabled | default(false)
+  vars:
+    ipv4_literal: '^(?:(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])\.){3}(?:25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])$'
+  assert:
+    that:
+      - item.uid is integer
+      - item.uid > 0
+      - item.uid < 4294967295
+      - item.local_address is match(ipv4_literal)
+      - item.vm_address is match(ipv4_literal)
+      - item.local_address == agents_guard.locksmith_forward.listen_address
+      - item.vm_address != item.local_address
+    fail_msg: "SSH jumps need a dedicated non-root numeric UID, bridge gateway source and one literal IPv4 VM address"
+  loop: "{{ agents_guard.ssh_jumps | default([]) }}"
+
 - name: Write nftables config
   template:
     src: nftables.conf.j2

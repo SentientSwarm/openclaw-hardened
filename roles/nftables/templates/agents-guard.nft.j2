@@ -18,6 +18,9 @@ table inet agents_guard {
         iifname "{{ g.bridge }}" ip daddr {{ g.pipelock_address }} tcp dport {{ pipelock.listen.rsplit(':', 1)[1] }} accept comment "agents-pipelock-host"
         iifname "{{ g.bridge }}" udp dport { 53, 67 } accept comment "agents-dns-dhcp"
         iifname "{{ g.bridge }}" tcp dport 53 accept comment "agents-dns-tcp"
+{% for jump in g.ssh_jumps | default([]) %}
+        iifname "{{ g.bridge }}" ip saddr {{ jump.vm_address }} ip daddr {{ jump.local_address }} tcp sport 22 ct state established accept comment "agents-ssh-return"
+{% endfor %}
         iifname "{{ g.bridge }}" drop comment "agents-no-ingress"
     }
     chain forward {
@@ -32,6 +35,9 @@ table inet agents_guard {
         ct state established,related accept
         oifname "{{ g.bridge }}" udp sport { 53, 67 } accept comment "agents-dns-dhcp-return"
         oifname "{{ g.bridge }}" tcp sport 53 accept comment "agents-dns-return"
+{% for jump in g.ssh_jumps | default([]) %}
+        oifname "{{ g.bridge }}" ip saddr {{ jump.local_address }} ip daddr {{ jump.vm_address }} meta skuid {{ jump.uid }} tcp dport 22 accept comment "agents-ssh-jump"
+{% endfor %}
         oifname "{{ g.bridge }}" drop comment "agents-no-host-output"
     }
 }

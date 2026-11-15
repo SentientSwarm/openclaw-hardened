@@ -14,3 +14,4 @@ network_defaults:
 # docs/site-config-schema.md#agents_guard). Shallow merge: set the whole dict.
 agents_guard:
   enabled: false
+  ssh_jumps: []
