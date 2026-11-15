@@ -114,7 +114,8 @@ table inet openclaw {
 {% if agents_guard.locksmith_forward.upstream_interface == "tailscale0" %}
         # tailscaled's own peer (UDP), DERP and control (HTTPS) traffic, which
         # the tailnet leg needs. tailscaled marks these sockets with its bypass
-        # mark 0x80000; setting SO_MARK requires CAP_NET_ADMIN.
+        # mark 0x80000. Any host-netns process with CAP_NET_ADMIN, or CAP_NET_RAW
+        # on kernel 5.17+, can set it too (see docs/security.md).
         meta mark & 0x00ff0000 == 0x00080000 accept comment "agents-guard-tailscale-transport"
 {% endif %}
 {% endif %}
