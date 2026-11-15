@@ -160,6 +160,11 @@ this before templating.
 | `agents_guard.locksmith_forward.upstream_ip` | IP string | Locksmith's address. Use a pinned IP, not a name, so a spoofed DNS answer cannot redirect agent bearers |
 | `agents_guard.locksmith_forward.upstream_port` | int | Locksmith's port |
 | `agents_guard.locksmith_forward.upstream_interface` | string | Interface that carries the upstream connection (e.g. `tailscale0`) |
+| `agents_guard.ssh_jumps` | list | Optional; default `[]`. Each entry has a dedicated non-root integer `uid`, gateway `local_address` equal to the forwarder listen address, and one literal IPv4 `vm_address`. Allows that UID to open TCP 22 to that VM; only established SSH replies pass the bridge input guard. No forwarded LAN access is opened. |
+
+See [the draft Robin SSH deployment prerequisites](robin-box-ssh-proposal.md)
+before enabling `ssh_jumps`. The role does not provision a jump identity, keys,
+VM address reservation, or Incus ingress ACL. This option alone is insufficient.
 
 ### llamafirewall
 

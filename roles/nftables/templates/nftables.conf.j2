@@ -107,6 +107,9 @@ table inet openclaw {
 
 {% if agents_guard.enabled | default(false) %}
         # Incus agents bridge DNS/DHCP responses; owned by agents-network-guard.
+{% for jump in agents_guard.ssh_jumps | default([]) %}
+        oifname "{{ agents_guard.bridge }}" ip saddr {{ jump.local_address }} ip daddr {{ jump.vm_address }} meta skuid {{ jump.uid }} tcp dport 22 accept comment "agents-ssh-jump"
+{% endfor %}
         oifname "{{ agents_guard.bridge }}" udp sport { 53, 67 } accept comment "agents-guard-dns-dhcp"
         oifname "{{ agents_guard.bridge }}" tcp sport 53 accept comment "agents-guard-dns-tcp"
         # The Locksmith forwarder's upstream connection over the tailnet.
