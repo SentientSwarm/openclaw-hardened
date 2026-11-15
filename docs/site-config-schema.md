@@ -143,6 +143,24 @@ Credential-injecting reverse proxy for tool APIs.
 | `api_key_env` | string | no | Environment variable name exposed to containers |
 | `timeout_seconds` | int | no | Request timeout |
 
+### agents_guard
+
+Host guard and Locksmith forwarder for an Incus bridge of agent VMs. Off by
+default. When `enabled` is true, every other key is required; the role asserts
+this before templating.
+
+| Variable | Type | Description |
+|----------|------|-------------|
+| `agents_guard.enabled` | bool | Install the guard table, its unit and the forwarder (default `false`) |
+| `agents_guard.bridge` | string | Incus bridge interface for the agent VMs (e.g. `agentbr0`) |
+| `agents_guard.bridge_cidr` | CIDR string | The bridge subnet; the only source the forwarder accepts |
+| `agents_guard.pipelock_address` | IP string | Host address the VMs use to reach Pipelock |
+| `agents_guard.locksmith_forward.listen_address` | IP string | Forwarder listen address (the bridge gateway address) |
+| `agents_guard.locksmith_forward.port` | int | Forwarder listen port |
+| `agents_guard.locksmith_forward.upstream_ip` | IP string | Locksmith's address. Use a pinned IP, not a name, so a spoofed DNS answer cannot redirect agent bearers |
+| `agents_guard.locksmith_forward.upstream_port` | int | Locksmith's port |
+| `agents_guard.locksmith_forward.upstream_interface` | string | Interface that carries the upstream connection (e.g. `tailscale0`) |
+
 ### llamafirewall
 
 LLM safety proxy (prompt injection, code analysis, budget enforcement).

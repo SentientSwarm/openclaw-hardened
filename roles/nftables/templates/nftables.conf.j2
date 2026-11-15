@@ -62,11 +62,13 @@ table inet openclaw {
     chain input {
         type filter hook input priority 10; policy drop;
 
-        # Incus agentbr0 service/DNS exceptions; owned by agents-network-guard.
-        iifname "agentbr0" tcp dport {{ pipelock.listen.split(':')[1] }} accept comment "agents-guard-pipelock"
-        iifname "agentbr0" ip daddr {{ agents_locksmith_forward.listen_address }} tcp dport {{ agents_locksmith_forward.port }} accept comment "agents-guard-locksmith-forward"
-        iifname "agentbr0" udp dport { 53, 67 } accept comment "agents-guard-dns-dhcp"
-        iifname "agentbr0" tcp dport 53 accept comment "agents-guard-dns-tcp"
+{% if agents_guard.enabled | default(false) %}
+        # Incus agents bridge exceptions; owned by agents-network-guard.
+        iifname "{{ agents_guard.bridge }}" ip daddr {{ agents_guard.pipelock_address }} tcp dport {{ pipelock.listen.rsplit(':', 1)[1] }} accept comment "agents-guard-pipelock"
+        iifname "{{ agents_guard.bridge }}" ip daddr {{ agents_guard.locksmith_forward.listen_address }} tcp dport {{ agents_guard.locksmith_forward.port }} accept comment "agents-guard-locksmith-forward"
+        iifname "{{ agents_guard.bridge }}" udp dport { 53, 67 } accept comment "agents-guard-dns-dhcp"
+        iifname "{{ agents_guard.bridge }}" tcp dport 53 accept comment "agents-guard-dns-tcp"
+{% endif %}
 
         ct state established,related accept
         iif lo accept
@@ -103,11 +105,13 @@ table inet openclaw {
     chain output {
         type filter hook output priority 10; policy drop;
 
-        # Incus agentbr0 DNS/DHCP responses; owned by agents-network-guard.
-        oifname "agentbr0" udp sport { 53, 67 } accept comment "agents-guard-dns-dhcp"
-        oifname "agentbr0" tcp sport 53 accept comment "agents-guard-dns-tcp"
-        # Host forwarder for agentbr0 VMs to studio-1 Locksmith over the tailnet.
-        oifname "tailscale0" ip daddr {{ agents_locksmith_forward.upstream_ip }} tcp dport {{ agents_locksmith_forward.upstream_port }} accept comment "agents-guard-locksmith-upstream"
+{% if agents_guard.enabled | default(false) %}
+        # Incus agents bridge DNS/DHCP responses; owned by agents-network-guard.
+        oifname "{{ agents_guard.bridge }}" udp sport { 53, 67 } accept comment "agents-guard-dns-dhcp"
+        oifname "{{ agents_guard.bridge }}" tcp sport 53 accept comment "agents-guard-dns-tcp"
+        # The Locksmith forwarder's upstream connection over the tailnet.
+        oifname "{{ agents_guard.locksmith_forward.upstream_interface }}" ip daddr {{ agents_guard.locksmith_forward.upstream_ip }} tcp dport {{ agents_guard.locksmith_forward.upstream_port }} accept comment "agents-guard-locksmith-upstream"
+{% endif %}
 
         ct state established,related accept
         oif lo accept

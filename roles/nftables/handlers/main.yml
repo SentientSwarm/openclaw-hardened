@@ -1,3 +1,18 @@
 ---
 - name: reload nftables
   command: nft -f /etc/nftables.conf
+
+# Reloading the guard replaces table inet agents_guard atomically.
+- name: restart agents network guard
+  systemd:
+    name: agents-network-guard.service
+    state: restarted
+    daemon_reload: true
+
+# Restarting the socket also stops the proxy (it Requires the socket), so the
+# next connection starts a proxy with the new upstream.
+- name: restart agents locksmith forwarder
+  systemd:
+    name: agents-locksmith-forward.socket
+    state: restarted
+    daemon_reload: true

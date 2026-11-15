@@ -50,6 +50,11 @@ check "nftables skuid egress rule"       "nft list chain inet openclaw output 2>
 check "nftables allowed_lan_ips set"     "nft list set inet openclaw allowed_lan_ips 2>/dev/null | grep -q '{{ network.gateway_ip }}'"
 check "nftables output hook loaded"      "nft list chain inet openclaw output 2>/dev/null | grep -q 'priority'"
 check "Docker tables still intact"       "iptables -L DOCKER-USER -n"
+{% if agents_guard.enabled | default(false) %}
+check "agents guard table loaded"        "nft list table inet agents_guard | grep -q agents-no-egress"
+check "agents guard unit active"        "systemctl is-active agents-network-guard"
+check "Locksmith forwarder listening"    "systemctl is-active agents-locksmith-forward.socket && ss -tln | grep -q '{{ agents_guard.locksmith_forward.listen_address }}:{{ agents_guard.locksmith_forward.port }}'"
+{% endif %}
 
 check "egress blocked (openclaw user)"   "! sudo -u openclaw curl -sf --max-time 3 https://httpbin.org/ip"
 check "egress blocked (root)"            "! curl -sf --max-time 3 https://httpbin.org/ip"

@@ -1,12 +1,17 @@
 [Unit]
 Description=Incus agents network guard
-After=network-online.target incus.service docker.service
-Wants=network-online.target
+# Load before Incus brings up {{ agents_guard.bridge }} or autostarts VMs; the
+# rules match by interface name, so they work before the bridge exists.
+DefaultDependencies=no
+Wants=network-pre.target
+After=local-fs.target
+Before=network-pre.target incus.service incus-startup.service agents-locksmith-forward.socket
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 ExecStart=/usr/local/sbin/agents-network-guard
+ExecReload=/usr/local/sbin/agents-network-guard
 
 [Install]
 WantedBy=multi-user.target
