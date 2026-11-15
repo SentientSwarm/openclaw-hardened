@@ -4,7 +4,7 @@ Requires=agents-locksmith-forward.socket
 After=agents-locksmith-forward.socket tailscaled.service
 
 [Service]
-ExecStart=/usr/lib/systemd/systemd-socket-proxyd --connections-max=64 {{ agents_locksmith_forward.upstream_host }}:{{ agents_locksmith_forward.upstream_port }}
+ExecStart=/usr/lib/systemd/systemd-socket-proxyd --connections-max=64 {{ agents_locksmith_forward.upstream_ip }}:{{ agents_locksmith_forward.upstream_port }}
 DynamicUser=yes
 NoNewPrivileges=yes
 CapabilityBoundingSet=

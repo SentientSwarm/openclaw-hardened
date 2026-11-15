@@ -1,7 +1,6 @@
 [Unit]
 Description=Locksmith forwarder for Incus agentbr0 VMs (listener)
 After=incus.service
-PartOf=agents-locksmith-forward.service
 
 [Socket]
 ListenStream={{ agents_locksmith_forward.listen_address }}:{{ agents_locksmith_forward.port }}
