@@ -1,0 +1,21 @@
+[Unit]
+Description=Incus agents network guard
+# Load before Incus brings up {{ agents_guard.bridge }} or autostarts VMs; the
+# rules match by interface name, so they work before the bridge exists.
+DefaultDependencies=no
+Wants=network-pre.target
+After=local-fs.target nftables.service
+# nftables.service flushes the whole ruleset when it stops or restarts.
+# PartOf re-runs this load after a restart; a separate stop then start does
+# not start the guard again (tracked in issue #2).
+PartOf=nftables.service
+Before=network-pre.target incus.service incus-startup.service agents-locksmith-forward.socket
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/agents-network-guard
+ExecReload=/usr/local/sbin/agents-network-guard
+
+[Install]
+WantedBy=multi-user.target

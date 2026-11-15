@@ -1,0 +1,16 @@
+{% set f = agents_guard.locksmith_forward %}
+[Unit]
+Description=Locksmith forwarder for Incus agents VMs (listener)
+# Never listen without the guard that limits the listener to the bridge.
+Requires=agents-network-guard.service
+After=agents-network-guard.service
+
+[Socket]
+ListenStream={{ f.listen_address }}:{{ f.port }}
+# The bridge address may appear after this unit starts.
+FreeBind=yes
+IPAddressDeny=any
+IPAddressAllow={{ agents_guard.bridge_cidr }}
+
+[Install]
+WantedBy=sockets.target

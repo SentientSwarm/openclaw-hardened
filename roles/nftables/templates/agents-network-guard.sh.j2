@@ -1,0 +1,4 @@
+#!/bin/sh
+set -eu
+# The file replaces table inet agents_guard atomically, so load it every time.
+exec /usr/sbin/nft -f /etc/agents-guard.nft

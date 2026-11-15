@@ -7,3 +7,10 @@ network_defaults:
     - 443
     - 11434
     - 8091
+
+
+# Incus agents guard and Locksmith forwarder. Off unless the site enables it;
+# when enabled, the site config supplies every address (see
+# docs/site-config-schema.md#agents_guard). Shallow merge: set the whole dict.
+agents_guard:
+  enabled: false

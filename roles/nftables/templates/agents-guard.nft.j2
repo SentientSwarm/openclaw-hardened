@@ -1,0 +1,37 @@
+#!/usr/sbin/nft -f
+{% set g = agents_guard %}
+{% set f = g.locksmith_forward %}
+# Narrow host guard for the Incus agents bridge ({{ g.bridge }}).
+# Loaded by agents-network-guard.service. The declare-then-delete pair replaces
+# the table atomically on every load, so a changed file always converges.
+# Input and forward have no established-state accept ahead of the bridge drops,
+# so a reload also cuts connections the new rules no longer allow.
+table inet agents_guard
+delete table inet agents_guard
+
+table inet agents_guard {
+    chain input {
+        type filter hook input priority -20; policy accept;
+        # The Locksmith forwarder serves the agents bridge only (a drop is final).
+        iifname != "{{ g.bridge }}" ip daddr {{ f.listen_address }} tcp dport {{ f.port }} drop comment "agents-locksmith-forward-bridge-only"
+        iifname "{{ g.bridge }}" ip daddr {{ f.listen_address }} tcp dport {{ f.port }} accept comment "agents-locksmith-forward"
+        iifname "{{ g.bridge }}" ip daddr {{ g.pipelock_address }} tcp dport {{ pipelock.listen.rsplit(':', 1)[1] }} accept comment "agents-pipelock-host"
+        iifname "{{ g.bridge }}" udp dport { 53, 67 } accept comment "agents-dns-dhcp"
+        iifname "{{ g.bridge }}" tcp dport 53 accept comment "agents-dns-tcp"
+        iifname "{{ g.bridge }}" drop comment "agents-no-ingress"
+    }
+    chain forward {
+        type filter hook forward priority -20; policy accept;
+        # Every allowed bridge flow ends on the host, so no forwarded bridge
+        # traffic is accepted, including flows that predate this table.
+        iifname "{{ g.bridge }}" oifname != "{{ g.bridge }}" drop comment "agents-no-egress"
+        oifname "{{ g.bridge }}" iifname != "{{ g.bridge }}" drop comment "agents-no-ingress"
+    }
+    chain output {
+        type filter hook output priority -20; policy accept;
+        ct state established,related accept
+        oifname "{{ g.bridge }}" udp sport { 53, 67 } accept comment "agents-dns-dhcp-return"
+        oifname "{{ g.bridge }}" tcp sport 53 accept comment "agents-dns-return"
+        oifname "{{ g.bridge }}" drop comment "agents-no-host-output"
+    }
+}

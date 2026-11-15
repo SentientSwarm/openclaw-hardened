@@ -14,6 +14,23 @@
     state: stopped
   failed_when: false
 
+- name: Check agents guard site config
+  when: agents_guard.enabled | default(false)
+  assert:
+    that:
+      - agents_guard.bridge is defined
+      - agents_guard.bridge_cidr is defined
+      - agents_guard.pipelock_address is defined
+      - agents_guard.locksmith_forward.listen_address is defined
+      - agents_guard.locksmith_forward.port is defined
+      - agents_guard.locksmith_forward.upstream_ip is defined
+      - agents_guard.locksmith_forward.upstream_port is defined
+      - agents_guard.locksmith_forward.upstream_interface is defined
+      - agents_guard.locksmith_forward.listen_address is match('^[0-9]{1,3}(\\.[0-9]{1,3}){3}$')
+      - agents_guard.locksmith_forward.upstream_ip is match('^[0-9]{1,3}(\\.[0-9]{1,3}){3}$')
+      - agents_guard.pipelock_address is match('^[0-9]{1,3}(\\.[0-9]{1,3}){3}$')
+    fail_msg: "agents_guard.enabled needs the full agents_guard dict in site config (docs/site-config-schema.md#agents_guard)"
+
 - name: Write nftables config
   template:
     src: nftables.conf.j2
@@ -25,6 +42,51 @@
   systemd:
     name: nftables
     enabled: true
+
+- name: Incus agents guard and Locksmith forwarder
+  when: agents_guard.enabled | default(false)
+  block:
+    - name: Install Incus agents nftables guard rules
+      template:
+        src: agents-guard.nft.j2
+        dest: /etc/agents-guard.nft
+        mode: "0644"
+        validate: nft -c -f %s
+      notify: restart agents network guard
+
+    - name: Install Incus agents network guard script and unit
+      template:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: "{{ item.mode }}"
+      loop:
+        - { src: agents-network-guard.sh.j2, dest: /usr/local/sbin/agents-network-guard, mode: "0755" }
+        - { src: agents-network-guard.service.j2, dest: /etc/systemd/system/agents-network-guard.service, mode: "0644" }
+      notify: restart agents network guard
+
+    - name: Enable Incus agents network guard
+      systemd:
+        name: agents-network-guard.service
+        enabled: true
+        state: started
+        daemon_reload: true
+
+    - name: Install Incus agents Locksmith forwarder units
+      template:
+        src: "{{ item }}.j2"
+        dest: "/etc/systemd/system/{{ item }}"
+        mode: "0644"
+      loop:
+        - agents-locksmith-forward.socket
+        - agents-locksmith-forward.service
+      notify: restart agents locksmith forwarder
+
+    - name: Enable Incus agents Locksmith forwarder
+      systemd:
+        name: agents-locksmith-forward.socket
+        enabled: true
+        state: started
+        daemon_reload: true
 
 - name: Load nftables ruleset
   command: nft -f /etc/nftables.conf
