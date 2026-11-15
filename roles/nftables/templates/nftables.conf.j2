@@ -111,6 +111,12 @@ table inet openclaw {
         oifname "{{ agents_guard.bridge }}" tcp sport 53 accept comment "agents-guard-dns-tcp"
         # The Locksmith forwarder's upstream connection over the tailnet.
         oifname "{{ agents_guard.locksmith_forward.upstream_interface }}" ip daddr {{ agents_guard.locksmith_forward.upstream_ip }} tcp dport {{ agents_guard.locksmith_forward.upstream_port }} accept comment "agents-guard-locksmith-upstream"
+{% if agents_guard.locksmith_forward.upstream_interface == "tailscale0" %}
+        # tailscaled's own peer (UDP), DERP and control (HTTPS) traffic, which
+        # the tailnet leg needs. tailscaled marks these sockets with its bypass
+        # mark 0x80000; setting SO_MARK requires CAP_NET_ADMIN.
+        meta mark & 0x00ff0000 == 0x00080000 accept comment "agents-guard-tailscale-transport"
+{% endif %}
 {% endif %}
 
         ct state established,related accept
