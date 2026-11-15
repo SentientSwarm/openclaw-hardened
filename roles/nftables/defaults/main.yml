@@ -7,3 +7,13 @@ network_defaults:
     - 443
     - 11434
     - 8091
+
+# Incus agentbr0 VMs reach Locksmith through a host forwarder on the bridge
+# address, which carries the traffic to studio-1 over the tailnet (WireGuard),
+# so the VMs never send their Locksmith bearer across the LAN in cleartext.
+agents_locksmith_forward:
+  listen_address: "10.250.0.1"
+  port: 9200
+  upstream_host: "studio-1.taile222a3.ts.net"
+  upstream_ip: "100.88.45.123"
+  upstream_port: 9200

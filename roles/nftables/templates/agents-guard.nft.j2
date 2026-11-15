@@ -5,6 +5,7 @@ table inet agents_guard {
     chain input {
         type filter hook input priority -20; policy accept;
         iifname "agentbr0" tcp dport {{ pipelock.listen.split(':')[1] }} accept comment "agents-pipelock-host"
+        iifname "agentbr0" ip daddr {{ agents_locksmith_forward.listen_address }} tcp dport {{ agents_locksmith_forward.port }} accept comment "agents-locksmith-forward"
         ct state established,related accept
         iifname "agentbr0" udp dport { 53, 67 } accept comment "agents-dns-dhcp"
         iifname "agentbr0" tcp dport 53 accept comment "agents-dns-tcp"

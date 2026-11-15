@@ -51,6 +51,22 @@
     state: started
     daemon_reload: true
 
+- name: Install Incus agents Locksmith forwarder units
+  template:
+    src: "{{ item }}.j2"
+    dest: "/etc/systemd/system/{{ item }}"
+    mode: "0644"
+  loop:
+    - agents-locksmith-forward.socket
+    - agents-locksmith-forward.service
+
+- name: Enable Incus agents Locksmith forwarder
+  systemd:
+    name: agents-locksmith-forward.socket
+    enabled: true
+    state: started
+    daemon_reload: true
+
 - name: Load nftables ruleset
   command: nft -f /etc/nftables.conf
   changed_when: true
