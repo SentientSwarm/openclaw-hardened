@@ -1,0 +1,5 @@
+telemetry:
+  host: 127.0.0.1
+  prometheus:
+    port: 9090
+    scrape_interval: 15s

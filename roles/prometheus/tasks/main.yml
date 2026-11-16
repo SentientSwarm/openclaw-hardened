@@ -1,6 +1,9 @@
 ---
 # Prometheus — scrapes OTel Collector metrics exporter and Phoenix
 
+- name: Validate host-metrics settings
+  include_tasks: host_metrics_checks.yml
+
 - name: Create prometheus user
   user:
     name: prometheus
@@ -65,3 +68,44 @@
     enabled: true
     state: started
     daemon_reload: true
+
+# Optional host metrics: the distro node exporter. Its defaults file is written
+# before the package so it never starts on :9100, which llamafirewall may hold.
+- name: Configure node exporter listen address
+  copy:
+    content: |
+      ARGS="--web.listen-address={{ telemetry.prometheus.node_exporter.listen }} --collector.systemd --collector.pressure"
+    dest: /etc/default/prometheus-node-exporter
+    mode: "0644"
+  when: telemetry.prometheus.node_exporter.listen is defined
+  notify: restart node exporter
+
+- name: Configure apt proxy for node exporter install
+  copy:
+    content: |
+      Acquire::http::Proxy "http://{{ pipelock.listen }}";
+      Acquire::https::Proxy "http://{{ pipelock.listen }}";
+    dest: /etc/apt/apt.conf.d/90pipelock
+    mode: "0644"
+  when: telemetry.prometheus.node_exporter.listen is defined
+
+- name: Install node exporter
+  apt:
+    name: prometheus-node-exporter
+    state: present
+    update_cache: true
+    dpkg_options: force-confold
+  when: telemetry.prometheus.node_exporter.listen is defined
+
+- name: Remove apt proxy config
+  file:
+    path: /etc/apt/apt.conf.d/90pipelock
+    state: absent
+  when: telemetry.prometheus.node_exporter.listen is defined
+
+- name: Enable and start node exporter
+  systemd:
+    name: prometheus-node-exporter
+    enabled: true
+    state: started
+  when: telemetry.prometheus.node_exporter.listen is defined

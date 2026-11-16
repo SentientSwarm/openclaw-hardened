@@ -1,0 +1,8 @@
+---
+# Runs only the prometheus host-metrics asserts. Pass a case with -e @cases/<dir>/<name>.yml.
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Host-metrics checks
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/../../roles/prometheus/tasks/host_metrics_checks.yml"

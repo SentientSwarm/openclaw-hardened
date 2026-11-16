@@ -22,3 +22,15 @@ scrape_configs:
   - job_name: "prometheus"
     static_configs:
       - targets: ["{{ telemetry.host }}:{{ telemetry.prometheus.port }}"]
+{% if telemetry.prometheus.node_exporter.listen is defined %}
+
+  # Host metrics from the node exporter this role installs
+  - job_name: "node"
+    static_configs:
+      - targets: ["{{ telemetry.prometheus.node_exporter.listen }}"]
+{% endif %}
+{% if telemetry.prometheus.extra_scrape_configs | default([]) | length > 0 %}
+
+  # Site-defined jobs (telemetry.prometheus.extra_scrape_configs)
+{{ telemetry.prometheus.extra_scrape_configs | to_nice_yaml(indent=2) | indent(2, first=true) }}
+{%- endif %}

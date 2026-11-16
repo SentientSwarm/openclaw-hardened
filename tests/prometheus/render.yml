@@ -1,0 +1,11 @@
+---
+# Renders prometheus.yml for a passing case into out_dir, for promtool and a YAML parse.
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Render Prometheus config
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../../roles/prometheus/templates/prometheus.yml.j2"
+        dest: "{{ out_dir }}/prometheus.yml"
+        mode: "0644"

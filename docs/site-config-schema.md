@@ -321,6 +321,8 @@ Observability stack (OTel Collector, Prometheus, Phoenix, Grafana, Caddy).
 | `telemetry.prometheus.retention` | string | `30d` | Data retention period |
 | `telemetry.prometheus.scrape_interval` | string | `15s` | Default scrape interval |
 | `telemetry.prometheus.version` | string | `3.3.0` | Prometheus image version |
+| `telemetry.prometheus.node_exporter.listen` | string | *(none)* | `IPv4:port` for the distro node exporter. When set, the role installs it, binds it there (use loopback; llamafirewall may hold `:9100`) and scrapes it as job `node`. |
+| `telemetry.prometheus.extra_scrape_configs` | list | `[]` | Extra Prometheus scrape jobs, written as given. Each needs a unique `job_name` that is not a built-in one (`node`, `prometheus`, `otel-collector-*`). Example: an Incus host's `/1.0/metrics` endpoint with a metrics client certificate. |
 
 #### telemetry.phoenix
 

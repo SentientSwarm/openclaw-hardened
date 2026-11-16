@@ -100,6 +100,7 @@
   loop:
     - ai-gateway.json
     - telemetry-infra.json
+    - host-and-instances.json
   notify: restart grafana
 
 - name: Enable and start Grafana

@@ -1,0 +1,8 @@
+# Expect: node_exporter.listen must be IPv4:port
+telemetry:
+  host: 127.0.0.1
+  prometheus:
+    port: 9090
+    scrape_interval: 15s
+    node_exporter:
+      listen: 127.0.0.1:70000
