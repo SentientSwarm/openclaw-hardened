@@ -15,21 +15,7 @@
   failed_when: false
 
 - name: Check agents guard site config
-  when: agents_guard.enabled | default(false)
-  assert:
-    that:
-      - agents_guard.bridge is defined
-      - agents_guard.bridge_cidr is defined
-      - agents_guard.pipelock_address is defined
-      - agents_guard.locksmith_forward.listen_address is defined
-      - agents_guard.locksmith_forward.port is defined
-      - agents_guard.locksmith_forward.upstream_ip is defined
-      - agents_guard.locksmith_forward.upstream_port is defined
-      - agents_guard.locksmith_forward.upstream_interface is defined
-      - agents_guard.locksmith_forward.listen_address is match('^[0-9]{1,3}(\\.[0-9]{1,3}){3}$')
-      - agents_guard.locksmith_forward.upstream_ip is match('^[0-9]{1,3}(\\.[0-9]{1,3}){3}$')
-      - agents_guard.pipelock_address is match('^[0-9]{1,3}(\\.[0-9]{1,3}){3}$')
-    fail_msg: "agents_guard.enabled needs the full agents_guard dict in site config (docs/site-config-schema.md#agents_guard)"
+  include_tasks: agents_guard_checks.yml
 
 - name: Write nftables config
   template:

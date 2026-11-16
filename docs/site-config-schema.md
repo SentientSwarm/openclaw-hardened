@@ -146,8 +146,9 @@ Credential-injecting reverse proxy for tool APIs.
 ### agents_guard
 
 Host guard and Locksmith forwarder for an Incus bridge of agent VMs. Off by
-default. When `enabled` is true, every other key is required; the role asserts
-this before templating.
+default. When `enabled` is true, every other key is required except
+`cross_zone_flows` and `cross_zone_peer_bridges`, which are optional (a flow
+needs its peer bridge listed); the role asserts this before templating.
 
 | Variable | Type | Description |
 |----------|------|-------------|
@@ -160,6 +161,8 @@ this before templating.
 | `agents_guard.locksmith_forward.upstream_ip` | IP string | Locksmith's address. Use a pinned IP, not a name, so a spoofed DNS answer cannot redirect agent bearers |
 | `agents_guard.locksmith_forward.upstream_port` | int | Locksmith's port |
 | `agents_guard.locksmith_forward.upstream_interface` | string | Interface that carries the upstream connection (e.g. `tailscale0`) |
+| `agents_guard.cross_zone_peer_bridges` | list | Bridges an agents VM may reach through `cross_zone_flows` (e.g. `[herdbr0]`). Required for any flow; the role refuses a flow whose other interface is not listed, so a flow cannot open egress past Pipelock through an uplink |
+| `agents_guard.cross_zone_flows` | list | Optional. Named TCP flows forwarded between the agents bridge and one of `cross_zone_peer_bridges`. Each entry has a unique `name`, `from_interface`, `from_address`, `to_interface`, `to_address` and `port`; the guard accepts that one port from the one address to the other, plus its established replies, in nftables and in Docker's `DOCKER-USER` chain. `security.ipv4_filtering` only stops its own instance from spoofing, so enable it and `security.mac_filtering` on every NIC attached to either bridge (for example in the bridge's profile), give each flow address its NIC's static `ipv4.address`, and admit the same flow in both bridges' Incus ACLs |
 
 ### llamafirewall
 

@@ -1,0 +1,26 @@
+name: agents-guard
+on:
+  pull_request:
+    paths:
+      - "roles/nftables/**"
+      - "tests/agents-guard/**"
+      - ".github/workflows/agents-guard.yml"
+  push:
+    branches: [main]
+    paths:
+      - "roles/nftables/**"
+      - "tests/agents-guard/**"
+permissions:
+  contents: read
+jobs:
+  checks:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install ansible-core and nftables
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq nftables
+          python3 -m pip install --user "ansible-core>=2.16,<2.19"
+      - name: Run agents guard tests
+        run: NFT="sudo nft" bash tests/agents-guard/run.sh

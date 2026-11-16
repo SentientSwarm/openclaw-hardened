@@ -1,0 +1,8 @@
+---
+# Runs only the agents_guard site-config asserts. Pass a case with -e @cases/<dir>/<name>.yml.
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  tasks:
+    - name: Agents guard checks
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/../../roles/nftables/tasks/agents_guard_checks.yml"

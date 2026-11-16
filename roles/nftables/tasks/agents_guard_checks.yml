@@ -1,0 +1,52 @@
+---
+# Site-config checks for agents_guard; included by main.yml and by tests/agents-guard.
+- name: Check agents guard site config
+  when: agents_guard.enabled | default(false)
+  assert:
+    that:
+      - agents_guard.bridge is defined
+      - agents_guard.bridge_cidr is defined
+      - agents_guard.pipelock_address is defined
+      - agents_guard.locksmith_forward.listen_address is defined
+      - agents_guard.locksmith_forward.port is defined
+      - agents_guard.locksmith_forward.upstream_ip is defined
+      - agents_guard.locksmith_forward.upstream_port is defined
+      - agents_guard.locksmith_forward.upstream_interface is defined
+      - agents_guard.locksmith_forward.listen_address is match('^(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}\\Z')
+      - agents_guard.locksmith_forward.upstream_ip is match('^(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}\\Z')
+      - agents_guard.pipelock_address is match('^(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}\\Z')
+    fail_msg: "agents_guard.enabled needs the full agents_guard dict in site config (docs/site-config-schema.md#agents_guard)"
+
+- name: Check agents guard cross-zone flow lists
+  when: agents_guard.enabled | default(false)
+  assert:
+    that:
+      # A scalar would turn the peer allowlist into a substring test ("br0" in "herdbr0").
+      - agents_guard.cross_zone_peer_bridges | default([]) is sequence
+      - agents_guard.cross_zone_peer_bridges | default([]) is not string
+      - agents_guard.cross_zone_flows | default([]) is sequence
+      - agents_guard.cross_zone_flows | default([]) is not string
+      - (agents_guard.cross_zone_flows | default([]) | selectattr('name', 'defined') | list | length) == (agents_guard.cross_zone_flows | default([]) | length)
+      - (agents_guard.cross_zone_flows | default([]) | map(attribute='name') | unique | list | length) == (agents_guard.cross_zone_flows | default([]) | length)
+    fail_msg: "agents_guard.cross_zone_flows and cross_zone_peer_bridges must be lists, and every flow needs a unique name; the rule comments identify each flow"
+
+- name: Check agents guard cross-zone flows
+  when: agents_guard.enabled | default(false)
+  loop: "{{ agents_guard.cross_zone_flows | default([]) }}"
+  loop_control:
+    label: "{{ item.name | default('unnamed') }}"
+  assert:
+    that:
+      # Addresses are dotted quads with octets 0-255 and no leading zeros (iptables reads 010 as octal).
+      # \Z, not $: Python's $ also matches before a trailing newline, which
+      # would split one narrow accept into a broad one when rendered.
+      - item.name is defined and item.name is string and item.name is match('^[a-z0-9-]{1,48}\\Z')
+      - item.from_interface is defined and item.from_interface is string and item.from_interface is match('^[A-Za-z0-9_.-]{1,15}\\Z')
+      - item.to_interface is defined and item.to_interface is string and item.to_interface is match('^[A-Za-z0-9_.-]{1,15}\\Z')
+      - item.from_interface != item.to_interface
+      - (item.from_interface == agents_guard.bridge and item.to_interface in agents_guard.cross_zone_peer_bridges | default([]))
+        or (item.to_interface == agents_guard.bridge and item.from_interface in agents_guard.cross_zone_peer_bridges | default([]))
+      - item.from_address is defined and item.from_address is string and item.from_address is match('^(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}\\Z')
+      - item.to_address is defined and item.to_address is string and item.to_address is match('^(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])(\\.(25[0-5]|2[0-4][0-9]|1[0-9]{2}|[1-9]?[0-9])){3}\\Z')
+      - item.port is defined and item.port | string is match('^[0-9]{1,5}\\Z') and item.port | int > 0 and item.port | int < 65536
+    fail_msg: "each agents_guard.cross_zone_flows entry needs name, from/to interface, single from/to addresses and one port, between the agents bridge and a bridge listed in agents_guard.cross_zone_peer_bridges (docs/site-config-schema.md#agents_guard)"

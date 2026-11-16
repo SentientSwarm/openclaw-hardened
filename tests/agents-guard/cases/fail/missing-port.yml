@@ -1,0 +1,20 @@
+# Expected: fail
+agents_guard:
+  enabled: true
+  bridge: agentbr0
+  bridge_cidr: 10.250.0.0/24
+  pipelock_address: 192.168.50.20
+  locksmith_forward:
+    listen_address: 10.250.0.1
+    port: 9200
+    upstream_ip: 100.88.45.123
+    upstream_port: 9200
+    upstream_interface: tailscale0
+  cross_zone_peer_bridges:
+  - herdbr0
+  cross_zone_flows:
+  - name: robin-mcp-ssh
+    from_interface: agentbr0
+    from_address: 10.250.0.19
+    to_interface: herdbr0
+    to_address: 10.250.1.11
