@@ -1,0 +1,19 @@
+---
+# Renders the guard templates for a passing case into out_dir, for nft -c and sh -n.
+- hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    pipelock:
+      listen: "127.0.0.1:8888"
+  tasks:
+    - name: Render nft rules
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../../roles/nftables/templates/agents-guard.nft.j2"
+        dest: "{{ out_dir }}/agents-guard.nft"
+        mode: "0644"
+    - name: Render guard script
+      ansible.builtin.template:
+        src: "{{ playbook_dir }}/../../roles/nftables/templates/agents-network-guard.sh.j2"
+        dest: "{{ out_dir }}/agents-network-guard.sh"
+        mode: "0755"
