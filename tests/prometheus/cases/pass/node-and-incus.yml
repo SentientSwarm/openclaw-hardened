@@ -1,0 +1,19 @@
+telemetry:
+  host: 127.0.0.1
+  prometheus:
+    port: 9090
+    scrape_interval: 15s
+    node_exporter:
+      listen: 127.0.0.1:9101
+    extra_scrape_configs:
+      - job_name: incus
+        metrics_path: /1.0/metrics
+        scheme: https
+        tls_config:
+          cert_file: /etc/prometheus/incus-metrics/client.crt
+          key_file: /etc/prometheus/incus-metrics/client.key
+          ca_file: /etc/prometheus/incus-metrics/server.crt
+        static_configs:
+          - targets: ["127.0.0.1:9103"]
+            labels:
+              host: evo-x2-1
