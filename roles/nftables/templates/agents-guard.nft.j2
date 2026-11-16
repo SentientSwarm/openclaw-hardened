@@ -25,8 +25,8 @@ table inet agents_guard {
         type filter hook forward priority -20; policy accept;
         # Allowed bridge flows end on the host, except the named cross-zone
         # flows below: one TCP port between two pinned addresses, and only the
-        # established replies back. Every source address must be pinned on a NIC
-        # with Incus security.ipv4_filtering, or another VM could claim it.
+        # established replies back. The address match only holds if every NIC on
+        # both bridges has Incus ipv4 and mac filtering, so no VM can claim another's address.
 {% for c in g.cross_zone_flows | default([]) %}
         iifname "{{ c.from_interface }}" oifname "{{ c.to_interface }}" ip saddr {{ c.from_address }} ip daddr {{ c.to_address }} tcp dport {{ c.port | int }} accept comment "{{ c.name }}"
         iifname "{{ c.to_interface }}" oifname "{{ c.from_interface }}" ip saddr {{ c.to_address }} ip daddr {{ c.from_address }} tcp sport {{ c.port | int }} ct state established accept comment "{{ c.name }}-return"

@@ -31,6 +31,18 @@
       - agents_guard.pipelock_address is match('^[0-9]{1,3}(\\.[0-9]{1,3}){3}$')
     fail_msg: "agents_guard.enabled needs the full agents_guard dict in site config (docs/site-config-schema.md#agents_guard)"
 
+- name: Check agents guard cross-zone flow lists
+  when: agents_guard.enabled | default(false)
+  assert:
+    that:
+      # A scalar would turn the peer allowlist into a substring test ("br0" in "herdbr0").
+      - agents_guard.cross_zone_peer_bridges | default([]) is sequence
+      - agents_guard.cross_zone_peer_bridges | default([]) is not string
+      - agents_guard.cross_zone_flows | default([]) is sequence
+      - agents_guard.cross_zone_flows | default([]) is not string
+      - (agents_guard.cross_zone_flows | default([]) | map(attribute='name') | unique | list | length) == (agents_guard.cross_zone_flows | default([]) | length)
+    fail_msg: "agents_guard.cross_zone_flows and cross_zone_peer_bridges must be lists, and flow names must be unique; the rule comments identify each flow"
+
 - name: Check agents guard cross-zone flows
   when: agents_guard.enabled | default(false)
   loop: "{{ agents_guard.cross_zone_flows | default([]) }}"
@@ -50,13 +62,6 @@
       - item.to_address is defined and item.to_address is string and item.to_address is match('^[0-9]{1,3}(\\.[0-9]{1,3}){3}\\Z')
       - item.port is defined and item.port | string is match('^[0-9]{1,5}\\Z') and item.port | int > 0 and item.port | int < 65536
     fail_msg: "each agents_guard.cross_zone_flows entry needs name, from/to interface, single from/to addresses and one port, between the agents bridge and a bridge listed in agents_guard.cross_zone_peer_bridges (docs/site-config-schema.md#agents_guard)"
-
-- name: Check agents guard cross-zone flow names are unique
-  when: agents_guard.enabled | default(false)
-  assert:
-    that:
-      - (agents_guard.cross_zone_flows | default([]) | map(attribute='name') | unique | list | length) == (agents_guard.cross_zone_flows | default([]) | length)
-    fail_msg: "agents_guard.cross_zone_flows names must be unique; the rule comments identify each flow"
 
 - name: Write nftables config
   template:
