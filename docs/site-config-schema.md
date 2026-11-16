@@ -160,7 +160,8 @@ this before templating.
 | `agents_guard.locksmith_forward.upstream_ip` | IP string | Locksmith's address. Use a pinned IP, not a name, so a spoofed DNS answer cannot redirect agent bearers |
 | `agents_guard.locksmith_forward.upstream_port` | int | Locksmith's port |
 | `agents_guard.locksmith_forward.upstream_interface` | string | Interface that carries the upstream connection (e.g. `tailscale0`) |
-| `agents_guard.cross_zone_flows` | list | Optional. Named TCP flows forwarded between the agents bridge and another bridge. Each entry has `name`, `from_interface`, `from_address`, `to_interface`, `to_address` and `port`; the guard accepts that one port from the one address to the other, plus its established replies. Pin every source address on its NIC with Incus `security.ipv4_filtering`, and admit the same flow in both bridges' Incus ACLs |
+| `agents_guard.cross_zone_peer_bridges` | list | Bridges an agents VM may reach through `cross_zone_flows` (e.g. `[herdbr0]`). Required for any flow; the role refuses a flow whose other interface is not listed, so a flow cannot open egress past Pipelock through an uplink |
+| `agents_guard.cross_zone_flows` | list | Optional. Named TCP flows forwarded between the agents bridge and one of `cross_zone_peer_bridges`. Each entry has a unique `name`, `from_interface`, `from_address`, `to_interface`, `to_address` and `port`; the guard accepts that one port from the one address to the other, plus its established replies, in nftables and in Docker's `DOCKER-USER` chain. Pin every source address on its NIC with Incus `security.ipv4_filtering`, and admit the same flow in both bridges' Incus ACLs |
 
 ### llamafirewall
 

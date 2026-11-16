@@ -4,8 +4,9 @@
 # Narrow host guard for the Incus agents bridge ({{ g.bridge }}).
 # Loaded by agents-network-guard.service. The declare-then-delete pair replaces
 # the table atomically on every load, so a changed file always converges.
-# Input and forward have no established-state accept ahead of the bridge drops,
-# so a reload also cuts connections the new rules no longer allow.
+# Input has no established-state accept ahead of the bridge drops; forward has
+# only the per-flow established replies of agents_guard.cross_zone_flows. So a
+# reload also cuts connections the new rules no longer allow.
 table inet agents_guard
 delete table inet agents_guard
 
@@ -27,8 +28,8 @@ table inet agents_guard {
         # established replies back. Every source address must be pinned on a NIC
         # with Incus security.ipv4_filtering, or another VM could claim it.
 {% for c in g.cross_zone_flows | default([]) %}
-        iifname "{{ c.from_interface }}" oifname "{{ c.to_interface }}" ip saddr {{ c.from_address }} ip daddr {{ c.to_address }} tcp dport {{ c.port }} accept comment "{{ c.name }}"
-        iifname "{{ c.to_interface }}" oifname "{{ c.from_interface }}" ip saddr {{ c.to_address }} ip daddr {{ c.from_address }} tcp sport {{ c.port }} ct state established accept comment "{{ c.name }}-return"
+        iifname "{{ c.from_interface }}" oifname "{{ c.to_interface }}" ip saddr {{ c.from_address }} ip daddr {{ c.to_address }} tcp dport {{ c.port | int }} accept comment "{{ c.name }}"
+        iifname "{{ c.to_interface }}" oifname "{{ c.from_interface }}" ip saddr {{ c.to_address }} ip daddr {{ c.from_address }} tcp sport {{ c.port | int }} ct state established accept comment "{{ c.name }}-return"
 {% endfor %}
         # Nothing else is forwarded, including flows that predate this table.
         iifname "{{ g.bridge }}" oifname != "{{ g.bridge }}" drop comment "agents-no-egress"

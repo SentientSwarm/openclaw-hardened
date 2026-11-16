@@ -1,4 +1,17 @@
 #!/bin/sh
 set -eu
 # The file replaces table inet agents_guard atomically, so load it every time.
-exec /usr/sbin/nft -f /etc/agents-guard.nft
+/usr/sbin/nft -f /etc/agents-guard.nft
+# Docker sets the iptables FORWARD policy to DROP, and an nftables accept only
+# ends its own base chain, so the cross-zone flows also need accepts in
+# Docker's DOCKER-USER chain. They live in one chain that is flushed and
+# refilled on every load, so removing a flow removes its accept. Creating
+# DOCKER-USER early is safe: Docker adopts an existing chain.
+command -v iptables >/dev/null 2>&1 || exit 0
+iptables -N AGENTS-GUARD-FLOWS 2>/dev/null || iptables -F AGENTS-GUARD-FLOWS
+{% for c in agents_guard.cross_zone_flows | default([]) %}
+iptables -A AGENTS-GUARD-FLOWS -i {{ c.from_interface }} -o {{ c.to_interface }} -s {{ c.from_address }}/32 -d {{ c.to_address }}/32 -p tcp --dport {{ c.port | int }} -m comment --comment {{ c.name }} -j ACCEPT
+iptables -A AGENTS-GUARD-FLOWS -i {{ c.to_interface }} -o {{ c.from_interface }} -s {{ c.to_address }}/32 -d {{ c.from_address }}/32 -p tcp --sport {{ c.port | int }} -m conntrack --ctstate ESTABLISHED -m comment --comment {{ c.name }}-return -j ACCEPT
+{% endfor %}
+iptables -N DOCKER-USER 2>/dev/null || true
+iptables -C DOCKER-USER -j AGENTS-GUARD-FLOWS 2>/dev/null || iptables -I DOCKER-USER 1 -j AGENTS-GUARD-FLOWS

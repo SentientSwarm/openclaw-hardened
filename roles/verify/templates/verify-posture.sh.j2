@@ -55,7 +55,12 @@ check "agents guard table loaded"        "nft list table inet agents_guard | gre
 check "agents guard unit active"        "systemctl is-active agents-network-guard"
 check "Locksmith forwarder listening"    "systemctl is-active agents-locksmith-forward.socket && ss -tln | grep -q '{{ agents_guard.locksmith_forward.listen_address }}:{{ agents_guard.locksmith_forward.port }}'"
 check "forwarder dropped off the bridge"  "nft list chain inet agents_guard input | grep -q agents-locksmith-forward-bridge-only"
-check "no established shortcut (forward)" "! nft list chain inet agents_guard forward | grep -q 'ct state'"
+# Only the named per-flow replies (comment ending -return) may use ct state in forward.
+check "no established shortcut (forward)" "! nft list chain inet agents_guard forward | grep 'ct state' | grep -qvE -- '-return.$'"
+{% for c in agents_guard.cross_zone_flows | default([]) %}
+check "cross-zone flow {{ c.name }}" "nft list chain inet agents_guard forward | grep -qE 'comment .{{ c.name }}.$' && nft list chain inet agents_guard forward | grep -qE 'comment .{{ c.name }}-return.$'"
+check "cross-zone flow {{ c.name }} (Docker forward)" "! command -v iptables >/dev/null || iptables -S AGENTS-GUARD-FLOWS | grep -q -- '--comment {{ c.name }} '"
+{% endfor %}
 check "openclaw has agents exceptions"   "nft list chain inet openclaw input | grep -q agents-guard-locksmith-forward"
 check "Locksmith upstream reachable"     "curl -sf --max-time 5 -o /dev/null http://{{ agents_guard.locksmith_forward.upstream_ip }}:{{ agents_guard.locksmith_forward.upstream_port }}/livez"
 {% if agents_guard.locksmith_forward.upstream_interface == "tailscale0" %}
