@@ -160,6 +160,7 @@ this before templating.
 | `agents_guard.locksmith_forward.upstream_ip` | IP string | Locksmith's address. Use a pinned IP, not a name, so a spoofed DNS answer cannot redirect agent bearers |
 | `agents_guard.locksmith_forward.upstream_port` | int | Locksmith's port |
 | `agents_guard.locksmith_forward.upstream_interface` | string | Interface that carries the upstream connection (e.g. `tailscale0`) |
+| `agents_guard.cross_zone_flows` | list | Optional. Named TCP flows forwarded between the agents bridge and another bridge. Each entry has `name`, `from_interface`, `from_address`, `to_interface`, `to_address` and `port`; the guard accepts that one port from the one address to the other, plus its established replies. Pin every source address on its NIC with Incus `security.ipv4_filtering`, and admit the same flow in both bridges' Incus ACLs |
 
 ### llamafirewall
 

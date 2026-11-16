@@ -22,8 +22,15 @@ table inet agents_guard {
     }
     chain forward {
         type filter hook forward priority -20; policy accept;
-        # Every allowed bridge flow ends on the host, so no forwarded bridge
-        # traffic is accepted, including flows that predate this table.
+        # Allowed bridge flows end on the host, except the named cross-zone
+        # flows below: one TCP port between two pinned addresses, and only the
+        # established replies back. Every source address must be pinned on a NIC
+        # with Incus security.ipv4_filtering, or another VM could claim it.
+{% for c in g.cross_zone_flows | default([]) %}
+        iifname "{{ c.from_interface }}" oifname "{{ c.to_interface }}" ip saddr {{ c.from_address }} ip daddr {{ c.to_address }} tcp dport {{ c.port }} accept comment "{{ c.name }}"
+        iifname "{{ c.to_interface }}" oifname "{{ c.from_interface }}" ip saddr {{ c.to_address }} ip daddr {{ c.from_address }} tcp sport {{ c.port }} ct state established accept comment "{{ c.name }}-return"
+{% endfor %}
+        # Nothing else is forwarded, including flows that predate this table.
         iifname "{{ g.bridge }}" oifname != "{{ g.bridge }}" drop comment "agents-no-egress"
         oifname "{{ g.bridge }}" iifname != "{{ g.bridge }}" drop comment "agents-no-ingress"
     }
