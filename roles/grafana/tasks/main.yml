@@ -97,10 +97,17 @@
     owner: grafana
     group: grafana
     mode: "0640"
-  loop:
-    - ai-gateway.json
-    - telemetry-infra.json
-    - host-and-instances.json
+  loop: "{{ ['ai-gateway.json', 'telemetry-infra.json'] + (['host-and-instances.json'] if _host_metrics else []) }}"
+  vars:
+    _host_metrics: "{{ telemetry.prometheus.node_exporter.listen is defined and (telemetry.prometheus.node_exporter.scrape | default(true)) }}"
+  notify: restart grafana
+
+# Its panels need the node job; a site that scrapes host metrics elsewhere drops it here.
+- name: Remove the host and instances dashboard when Prometheus doesn't scrape the node exporter
+  file:
+    path: /var/lib/grafana/dashboards/host-and-instances.json
+    state: absent
+  when: not (telemetry.prometheus.node_exporter.listen is defined and (telemetry.prometheus.node_exporter.scrape | default(true)))
   notify: restart grafana
 
 - name: Enable and start Grafana
