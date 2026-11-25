@@ -22,7 +22,7 @@ scrape_configs:
   - job_name: "prometheus"
     static_configs:
       - targets: ["{{ telemetry.host }}:{{ telemetry.prometheus.port }}"]
-{% if telemetry.prometheus.node_exporter.listen is defined %}
+{% if telemetry.prometheus.node_exporter.listen is defined and (telemetry.prometheus.node_exporter.scrape | default(true)) %}
 
   # Host metrics from the node exporter this role installs
   - job_name: "node"

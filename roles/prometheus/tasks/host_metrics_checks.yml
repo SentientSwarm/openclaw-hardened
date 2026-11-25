@@ -21,3 +21,11 @@
   vars:
     _listen: "{{ telemetry.prometheus.node_exporter.listen }}"
   when: telemetry.prometheus.node_exporter.listen is defined
+
+- name: Check telemetry.prometheus.node_exporter.scrape
+  assert:
+    that:
+      - telemetry.prometheus.node_exporter.scrape is boolean
+      - telemetry.prometheus.node_exporter.listen is defined
+    fail_msg: "node_exporter.scrape must be true or false, and only set beside node_exporter.listen"
+  when: telemetry.prometheus.node_exporter.scrape is defined

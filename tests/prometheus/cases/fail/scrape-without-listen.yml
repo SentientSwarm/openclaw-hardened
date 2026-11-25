@@ -1,0 +1,7 @@
+# Expect: node_exporter.scrape must be true or false
+telemetry:
+  host: 127.0.0.1
+  prometheus:
+    port: 9090
+    node_exporter:
+      scrape: false

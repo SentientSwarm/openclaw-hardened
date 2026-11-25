@@ -1,0 +1,10 @@
+# The exporter stays installed (listen), but Prometheus doesn't scrape it.
+# Render-excludes: job_name: node
+telemetry:
+  host: 127.0.0.1
+  prometheus:
+    port: 9090
+    scrape_interval: 15s
+    node_exporter:
+      listen: 127.0.0.1:9101
+      scrape: false
